@@ -510,14 +510,14 @@ body {
       <div class="ms-col-val" id="stat-both">—</div>
     </div>
     <div class="ms-col">
-      <div class="ms-col-dot" style="background:var(--injured)"></div>
-      <div class="ms-col-label">Injured</div>
-      <div class="ms-col-val" id="stat-injured">—</div>
-    </div>
-    <div class="ms-col">
       <div class="ms-col-dot" style="background:var(--text)"></div>
       <div class="ms-col-label">Total</div>
       <div class="ms-col-val" id="stat-total">—</div>
+    </div>
+    <div class="ms-col">
+      <div class="ms-col-dot" style="background:var(--injured)"></div>
+      <div class="ms-col-label">Injured</div>
+      <div class="ms-col-val" id="stat-injured">—</div>
     </div>
   </div>
 </div>
@@ -876,7 +876,7 @@ function renderStats() {
     else if (act === 'injured')  mI++;
   }
 
-  const mT = mA + mR + mB * 2 + mI;
+  const mT = mA + mR + mB * 2;
   const setVal = (id, val) => {
     const el = document.getElementById(id);
     el.textContent = val;
