@@ -11,6 +11,7 @@
   --active: #AFC73C;
   --recovery: #228463;
   --both: #000CFF;
+  --injured: #FF3B30;
   --empty: #E0E0E5;
   --bg: #F2F2F7;
   --card: #FFFFFF;
@@ -108,6 +109,7 @@ body {
 #tb-active   { background: var(--active); }
 #tb-recovery { background: var(--recovery); }
 #tb-both     { background: var(--both); }
+#tb-injured  { background: var(--injured); }
 
 .log-btn {
   margin-top: 12px;
@@ -185,6 +187,7 @@ body {
 .cal-cell.act-active    { background: var(--active);   color: #fff; font-weight: 700; }
 .cal-cell.act-recovery  { background: var(--recovery); color: #fff; font-weight: 700; }
 .cal-cell.act-both      { background: var(--both);     color: #fff; font-weight: 700; }
+.cal-cell.act-injured   { background: var(--injured);  color: #fff; font-weight: 700; }
 .cal-cell:not(.other):hover { opacity: 0.75; }
 
 .legend {
@@ -200,7 +203,7 @@ body {
 /* ── STATS BUBBLE ── */
 .ms-cols {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
   margin-top: 4px;
 }
@@ -242,6 +245,7 @@ body {
 .ydot.act-active   { background: var(--active); }
 .ydot.act-recovery { background: var(--recovery); }
 .ydot.act-both     { background: var(--both); }
+.ydot.act-injured  { background: var(--injured); }
 .ydot.ghost        { background: transparent; }
 
 .year-stats {
@@ -277,6 +281,7 @@ body {
 .mdot.act-active   { background: var(--active); }
 .mdot.act-recovery { background: var(--recovery); }
 .mdot.act-both     { background: var(--both); }
+.mdot.act-injured  { background: var(--injured); }
 .mdot.ghost        { background: transparent; }
 
 /* ── MODAL ── */
@@ -321,6 +326,7 @@ body {
 #mb-active   { background: var(--active); }
 #mb-recovery { background: var(--recovery); }
 #mb-both     { background: var(--both); }
+#mb-injured  { background: var(--injured); }
 .modal-actions { display: flex; gap: 8px; }
 .modal-save {
   flex: 3;
@@ -462,6 +468,7 @@ body {
     <button class="type-btn" id="tb-active"   onclick="selectLogType('active')">Active</button>
     <button class="type-btn" id="tb-recovery" onclick="selectLogType('recovery')">Active Recovery</button>
     <button class="type-btn" id="tb-both"     onclick="selectLogType('both')">Both</button>
+    <button class="type-btn" id="tb-injured"  onclick="selectLogType('injured')">Injured</button>
   </div>
   <button class="log-btn" id="log-btn" onclick="saveToday()" disabled>Log Today</button>
   <div class="logged-badge" id="logged-badge"></div>
@@ -479,6 +486,7 @@ body {
     <div class="leg"><div class="leg-sq" style="background:var(--active)"></div>Active</div>
     <div class="leg"><div class="leg-sq" style="background:var(--recovery)"></div>Active Recovery</div>
     <div class="leg"><div class="leg-sq" style="background:var(--both)"></div>Both</div>
+    <div class="leg"><div class="leg-sq" style="background:var(--injured)"></div>Injured</div>
   </div>
 </div>
 
@@ -500,6 +508,11 @@ body {
       <div class="ms-col-dot" style="background:var(--both)"></div>
       <div class="ms-col-label">Both</div>
       <div class="ms-col-val" id="stat-both">—</div>
+    </div>
+    <div class="ms-col">
+      <div class="ms-col-dot" style="background:var(--injured)"></div>
+      <div class="ms-col-label">Injured</div>
+      <div class="ms-col-val" id="stat-injured">—</div>
     </div>
     <div class="ms-col">
       <div class="ms-col-dot" style="background:var(--text)"></div>
@@ -547,6 +560,7 @@ body {
       <button class="modal-btn" id="mb-active"   onclick="selectModalType('active')">Active</button>
       <button class="modal-btn" id="mb-recovery" onclick="selectModalType('recovery')">Active Recovery</button>
       <button class="modal-btn" id="mb-both"     onclick="selectModalType('both')">Both</button>
+      <button class="modal-btn" id="mb-injured"  onclick="selectModalType('injured')">Injured</button>
     </div>
     <div class="modal-actions">
       <button class="modal-save" id="modal-save" onclick="saveModal()" disabled>Save</button>
@@ -636,8 +650,8 @@ const MONTHS   = ['January','February','March','April','May','June',
 const MONTHS_S = ['Jan','Feb','Mar','Apr','May','Jun',
                   'Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS_S   = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-const COLORS   = { active: '#AFC73C', recovery: '#228463', both: '#000CFF' };
-const LABELS   = { active: 'Logged: Active', recovery: 'Logged: Active Recovery', both: 'Logged: Both' };
+const COLORS   = { active: '#AFC73C', recovery: '#228463', both: '#000CFF', injured: '#FF3B30' };
+const LABELS   = { active: 'Logged: Active', recovery: 'Logged: Active Recovery', both: 'Logged: Both', injured: 'Logged: Injured' };
 
 const SEED = {
   '2026-04-01':'active',  '2026-04-02':'active',
@@ -726,7 +740,7 @@ let modalType = null;
 // ─────────────────────────────────────────────
 function selectLogType(t) {
   logSelectedType = t;
-  ['active','recovery','both'].forEach(x =>
+  ['active','recovery','both','injured'].forEach(x =>
     document.getElementById('tb-'+x).classList.toggle('sel', x===t));
   document.getElementById('log-btn').disabled = false;
 }
@@ -758,7 +772,7 @@ function renderDailyLog() {
     badge.textContent      = LABELS[existing];
     logBtn.textContent     = 'Update Today';
     logBtn.disabled        = !logSelectedType;
-    ['active','recovery','both'].forEach(x => {
+    ['active','recovery','both','injured'].forEach(x => {
       const active = logSelectedType ? x===logSelectedType : x===existing;
       document.getElementById('tb-'+x).classList.toggle('sel', active);
     });
@@ -767,7 +781,7 @@ function renderDailyLog() {
     logBtn.textContent  = 'Log Today';
     logBtn.disabled     = !logSelectedType;
     if (!logSelectedType) {
-      ['active','recovery','both'].forEach(x =>
+      ['active','recovery','both','injured'].forEach(x =>
         document.getElementById('tb-'+x).classList.remove('sel'));
     }
   }
@@ -852,16 +866,17 @@ function renderStats() {
   document.getElementById('stats-month-label').textContent = `${MONTHS[m]} ${year}`;
 
   const daysInMonth = new Date(year, m + 1, 0).getDate();
-  let mA = 0, mR = 0, mB = 0;
+  let mA = 0, mR = 0, mB = 0, mI = 0;
 
   for (let d = 1; d <= daysInMonth; d++) {
     const act = data[fmt(year, m + 1, d)];
     if (act === 'active')        mA++;
     else if (act === 'recovery') mR++;
     else if (act === 'both')     mB++;
+    else if (act === 'injured')  mI++;
   }
 
-  const mT = mA + mR + mB * 2;
+  const mT = mA + mR + mB * 2 + mI;
   const setVal = (id, val) => {
     const el = document.getElementById(id);
     el.textContent = val;
@@ -870,6 +885,7 @@ function renderStats() {
   setVal('stat-active', mA);
   setVal('stat-recovery', mR);
   setVal('stat-both', mB);
+  setVal('stat-injured', mI);
   setVal('stat-total', mT);
 }
 
@@ -988,7 +1004,7 @@ function openModal(ds, day) {
   const dateObj  = new Date(y, m-1, d);
   document.getElementById('modal-title').textContent =
     `${WEEKDAY_NAMES[dateObj.getDay()]}, ${MONTHS[m-1]} ${day}`;
-  ['active','recovery','both'].forEach(t =>
+  ['active','recovery','both','injured'].forEach(t =>
     document.getElementById('mb-'+t).classList.toggle('sel', t === modalType));
   document.getElementById('modal-save').disabled = !modalType;
   document.getElementById('modal-bg').classList.add('open');
@@ -1002,7 +1018,7 @@ function closeModal() {
 
 function selectModalType(t) {
   modalType = t;
-  ['active','recovery','both'].forEach(x =>
+  ['active','recovery','both','injured'].forEach(x =>
     document.getElementById('mb-'+x).classList.toggle('sel', x===t));
   document.getElementById('modal-save').disabled = false;
 }
