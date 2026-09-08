@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fitness Tracker</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --active: #AFC73C;
+  --recovery: #228463;
+  --both: #000CFF;
+  --empty: #E0E0E5;
+  --bg: #F2F2F7;
+  --card: #FFFFFF;
+  --text: #1C1C1E;
+  --text2: #8E8E93;
+  --radius: 16px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 28px 24px 60px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.narrow, .year-card { max-width: 500px; margin-left: auto; margin-right: auto; }
+.year-card { padding-top: 36px; padding-bottom: 36px; }
+
+.page-year {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 24px;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
+}
+
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.card-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 14px;
+}
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+/* ── LOADING ── */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  gap: 14px;
+}
+.loading-overlay.hidden { display: none; }
+.loading-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--empty);
+  border-top-color: var(--active);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 14px; color: var(--text2); font-weight: 500; }
+
+/* ── DAILY LOG ── */
+.today-date { font-size: 15px; color: var(--text2); margin-bottom: 14px; }
+.type-btns { display: flex; gap: 8px; }
+.type-btn {
+  flex: 1;
+  padding: 13px 6px;
+  border: 3px solid transparent;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  opacity: 1;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.type-btn.sel   { transform: scale(1.05); box-shadow: 0 0 0 3px rgba(0,0,0,0.25); }
+.type-btn:hover { opacity: 0.88; }
+#tb-active   { background: var(--active); }
+#tb-recovery { background: var(--recovery); }
+#tb-both     { background: var(--both); }
+
+.log-btn {
+  margin-top: 12px;
+  width: 100%;
+  padding: 13px;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: white;
+  background: #1C1C1E;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.log-btn:hover    { background: #3A3A3C; }
+.log-btn:disabled { background: #1C1C1E; cursor: default; }
+
+.logged-badge {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+  display: none;
+}
+
+/* ── MONTHLY CALENDAR ── */
+.month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.month-nav-title { font-size: 17px; font-weight: 700; }
+.nav-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: var(--text);
+  padding: 2px 8px;
+  border-radius: 8px;
+  line-height: 1;
+}
+.nav-btn:hover { background: var(--bg); }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+.cal-hdr {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text2);
+  font-weight: 600;
+  padding-bottom: 6px;
+}
+.cal-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.1s;
+  user-select: none;
+}
+.cal-cell.other         { color: #C7C7CC; cursor: default; pointer-events: none; }
+.cal-cell.today-empty   { background: #E8E8E8; color: var(--text); font-weight: 700; }
+.cal-cell.act-active    { background: var(--active);   color: #fff; font-weight: 700; }
+.cal-cell.act-recovery  { background: var(--recovery); color: #fff; font-weight: 700; }
+.cal-cell.act-both      { background: var(--both);     color: #fff; font-weight: 700; }
+.cal-cell:not(.other):hover { opacity: 0.75; }
+
+.legend {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.leg { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #555; }
+.leg-sq { width: 12px; height: 12px; border-radius: 3px; }
+
+/* ── STATS BUBBLE ── */
+.ms-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+.ms-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.ms-col-dot {
+  width: 10px; height: 10px;
+  border-radius: 2px;
+}
+.ms-col-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  text-align: center;
+}
+.ms-col-val {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+.ms-col-val.zero { color: #D1D1D6; }
+
+/* ── YEAR GRID ── */
+.year-grid { display: flex; gap: 3px; width: 100%; }
+.year-col  { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.ydot {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: var(--empty);
+}
+.ydot.act-active   { background: var(--active); }
+.ydot.act-recovery { background: var(--recovery); }
+.ydot.act-both     { background: var(--both); }
+.ydot.ghost        { background: transparent; }
+
+.year-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 10px;
+}
+
+/* ── BY MONTH ── */
+.months-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+.mini-month-name {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.mdot {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 1.5px;
+  background: var(--empty);
+}
+.mdot.act-active   { background: var(--active); }
+.mdot.act-recovery { background: var(--recovery); }
+.mdot.act-both     { background: var(--both); }
+.mdot.ghost        { background: transparent; }
+
+/* ── MODAL ── */
+.modal-bg {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 100;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal-bg.open { display: flex; }
+.modal {
+  background: white;
+  border-radius: 20px 20px 0 0;
+  padding: 24px 20px 40px;
+  width: 100%;
+  max-width: 420px;
+  animation: slideUp 0.2s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; text-align: center; }
+.modal-btns  { display: flex; gap: 8px; margin-bottom: 12px; }
+.modal-btn {
+  flex: 1;
+  padding: 13px 6px;
+  border: none;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  opacity: 1;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.modal-btn.sel { transform: scale(1.05); box-shadow: 0 0 0 3px rgba(0,0,0,0.25); }
+.modal-btn:hover { opacity: 0.88; }
+#mb-active   { background: var(--active); }
+#mb-recovery { background: var(--recovery); }
+#mb-both     { background: var(--both); }
+.modal-actions { display: flex; gap: 8px; }
+.modal-save {
+  flex: 3;
+  padding: 13px;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: white;
+  background: #1C1C1E;
+  cursor: pointer;
+}
+.modal-save:disabled { background: #C7C7CC; cursor: default; }
+.modal-clear {
+  flex: 1;
+  padding: 13px;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #FF3B30;
+  background: #FFE5E5;
+  cursor: pointer;
+}
+.modal-cancel {
+  width: 100%;
+  margin-top: 8px;
+  padding: 13px;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text2);
+  background: var(--bg);
+  cursor: pointer;
+}
+
+/* ── PIN / LOCK ── */
+.lock-btn {
+  position: fixed;
+  bottom: 28px;
+  right: 24px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #1C1C1E;
+  color: white;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  z-index: 200;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.lock-btn.unlocked { background: var(--active); }
+
+.pin-bg {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 300;
+  align-items: center;
+  justify-content: center;
+}
+.pin-bg.open { display: flex; }
+.pin-box {
+  background: white;
+  border-radius: 20px;
+  padding: 28px 24px 24px;
+  width: 300px;
+  text-align: center;
+}
+.pin-title { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+.pin-sub   { font-size: 13px; color: var(--text2); margin-bottom: 18px; }
+.pin-input {
+  width: 100%;
+  padding: 13px;
+  border: 2px solid #E5E5EA;
+  border-radius: 12px;
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 8px;
+  outline: none;
+  margin-bottom: 12px;
+}
+.pin-input:focus { border-color: #1C1C1E; }
+.pin-input.wrong { border-color: #FF3B30; animation: shake 0.3s; }
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  25%      { transform: translateX(-6px); }
+  75%      { transform: translateX(6px); }
+}
+.pin-submit {
+  width: 100%;
+  padding: 13px;
+  border: none;
+  border-radius: 12px;
+  background: #1C1C1E;
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.pin-cancel {
+  width: 100%;
+  margin-top: 8px;
+  padding: 11px;
+  border: none;
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text2);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Loading your tracker…</div>
+</div>
+
+<div class="page-year" id="page-year">2026</div>
+
+<!-- ── SECTION 1: DAILY LOG (hidden in view mode) ── -->
+<div class="card narrow" id="log-card" style="display:none">
+  <div class="card-label">Today's Log</div>
+  <div class="card-title">Fitness Tracker</div>
+  <div class="today-date" id="today-date-label"></div>
+  <div class="type-btns">
+    <button class="type-btn" id="tb-active"   onclick="selectLogType('active')">Active</button>
+    <button class="type-btn" id="tb-recovery" onclick="selectLogType('recovery')">Active Recovery</button>
+    <button class="type-btn" id="tb-both"     onclick="selectLogType('both')">Both</button>
+  </div>
+  <button class="log-btn" id="log-btn" onclick="saveToday()" disabled>Log Today</button>
+  <div class="logged-badge" id="logged-badge"></div>
+</div>
+
+<!-- ── SECTION 2: MONTHLY CALENDAR ── -->
+<div class="card narrow">
+  <div class="month-nav">
+    <button class="nav-btn" onclick="changeMonth(-1)">‹</button>
+    <div class="month-nav-title" id="cal-title"></div>
+    <button class="nav-btn" onclick="changeMonth(1)">›</button>
+  </div>
+  <div class="cal-grid" id="cal-grid"></div>
+  <div class="legend">
+    <div class="leg"><div class="leg-sq" style="background:var(--active)"></div>Active</div>
+    <div class="leg"><div class="leg-sq" style="background:var(--recovery)"></div>Active Recovery</div>
+    <div class="leg"><div class="leg-sq" style="background:var(--both)"></div>Both</div>
+  </div>
+</div>
+
+<!-- ── SECTION 2.5: STATS ── -->
+<div class="card narrow">
+  <div class="card-label" id="stats-month-label">This Month</div>
+  <div class="ms-cols">
+    <div class="ms-col">
+      <div class="ms-col-dot" style="background:var(--active)"></div>
+      <div class="ms-col-label">Active</div>
+      <div class="ms-col-val" id="stat-active">—</div>
+    </div>
+    <div class="ms-col">
+      <div class="ms-col-dot" style="background:var(--recovery)"></div>
+      <div class="ms-col-label">A. Rec</div>
+      <div class="ms-col-val" id="stat-recovery">—</div>
+    </div>
+    <div class="ms-col">
+      <div class="ms-col-dot" style="background:var(--both)"></div>
+      <div class="ms-col-label">Both</div>
+      <div class="ms-col-val" id="stat-both">—</div>
+    </div>
+    <div class="ms-col">
+      <div class="ms-col-dot" style="background:var(--text)"></div>
+      <div class="ms-col-label">Total</div>
+      <div class="ms-col-val" id="stat-total">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SECTION 3: YEAR GRID ── -->
+<div class="card year-card">
+  <div class="card-label">Last 365 Days</div>
+  <div class="year-grid" id="year-grid"></div>
+  <div class="year-stats">
+    <span>Completion</span>
+    <span id="year-stat"></span>
+  </div>
+</div>
+
+<!-- ── SECTION 4: BY MONTH ── -->
+<div class="card narrow">
+  <div class="card-label" id="by-month-label">2026 by Month</div>
+  <div class="months-grid" id="months-grid"></div>
+</div>
+
+<!-- ── LOCK BUTTON ── -->
+<button class="lock-btn" id="lock-btn" onclick="toggleLock()">🔒</button>
+
+<!-- ── PIN MODAL ── -->
+<div class="pin-bg" id="pin-bg">
+  <div class="pin-box">
+    <div class="pin-title">Enter PIN</div>
+    <div class="pin-sub">Owner access required to edit</div>
+    <input class="pin-input" id="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="····" onkeydown="if(event.key==='Enter')submitPin()">
+    <button class="pin-submit" onclick="submitPin()">Unlock</button>
+    <button class="pin-cancel" onclick="closePinModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- ── MODAL ── -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Log day</div>
+    <div class="modal-btns">
+      <button class="modal-btn" id="mb-active"   onclick="selectModalType('active')">Active</button>
+      <button class="modal-btn" id="mb-recovery" onclick="selectModalType('recovery')">Active Recovery</button>
+      <button class="modal-btn" id="mb-both"     onclick="selectModalType('both')">Both</button>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-save" id="modal-save" onclick="saveModal()" disabled>Save</button>
+      <button class="modal-clear" onclick="clearModal()">Clear</button>
+    </div>
+    <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// PIN / ACCESS CONTROL
+// ─────────────────────────────────────────────
+const OWNER_PIN = '3539';
+let _unlocked = sessionStorage.getItem('ft_unlocked') === '1';
+
+function applyLockState() {
+  const btn = document.getElementById('lock-btn');
+  const logCard = document.getElementById('log-card');
+  if (_unlocked) {
+    btn.textContent = '🔓';
+    btn.classList.add('unlocked');
+    logCard.style.display = 'block';
+  } else {
+    btn.textContent = '🔒';
+    btn.classList.remove('unlocked');
+    logCard.style.display = 'none';
+  }
+}
+
+function toggleLock() {
+  if (_unlocked) {
+    // Lock
+    _unlocked = false;
+    sessionStorage.removeItem('ft_unlocked');
+    applyLockState();
+    renderMonthCalendar(); // re-render to disable day clicks
+  } else {
+    // Show PIN prompt
+    document.getElementById('pin-bg').classList.add('open');
+    setTimeout(() => document.getElementById('pin-input').focus(), 100);
+  }
+}
+
+function submitPin() {
+  const val = document.getElementById('pin-input').value;
+  if (val === OWNER_PIN) {
+    _unlocked = true;
+    sessionStorage.setItem('ft_unlocked', '1');
+    closePinModal();
+    applyLockState();
+    renderMonthCalendar();
+  } else {
+    const inp = document.getElementById('pin-input');
+    inp.classList.add('wrong');
+    inp.value = '';
+    setTimeout(() => inp.classList.remove('wrong'), 400);
+  }
+}
+
+function closePinModal() {
+  document.getElementById('pin-bg').classList.remove('open');
+  document.getElementById('pin-input').value = '';
+}
+
+// ─────────────────────────────────────────────
+// SUPABASE — loaded dynamically (non-blocking)
+// ─────────────────────────────────────────────
+let _db = null;
+
+function loadSupabaseScript() {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(false), 5000);
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+    s.onload = () => { clearTimeout(timer); resolve(true); };
+    s.onerror = () => { clearTimeout(timer); resolve(false); };
+    document.head.appendChild(s);
+  });
+}
+
+// ─────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────
+const MONTHS   = ['January','February','March','April','May','June',
+                  'July','August','September','October','November','December'];
+const MONTHS_S = ['Jan','Feb','Mar','Apr','May','Jun',
+                  'Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYS_S   = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const COLORS   = { active: '#AFC73C', recovery: '#228463', both: '#000CFF' };
+const LABELS   = { active: 'Logged: Active', recovery: 'Logged: Active Recovery', both: 'Logged: Both' };
+
+const SEED = {
+  '2026-04-01':'active',  '2026-04-02':'active',
+  '2026-04-03':'recovery','2026-04-04':'recovery',
+  '2026-04-07':'active',  '2026-04-08':'active',  '2026-04-09':'active',
+  '2026-04-11':'recovery',
+  '2026-04-12':'active',  '2026-04-13':'active',
+  '2026-04-16':'active',  '2026-04-17':'active',
+  '2026-04-18':'recovery',
+  '2026-04-20':'active',  '2026-04-21':'active',
+  '2026-04-23':'active',  '2026-04-24':'active',
+  '2026-04-26':'recovery','2026-04-27':'recovery',
+  '2026-04-28':'recovery','2026-04-29':'recovery','2026-04-30':'recovery',
+  '2026-05-02':'active',
+  '2026-05-06':'active',  '2026-05-07':'active',  '2026-05-08':'active',
+  '2026-05-10':'active',
+  '2026-05-12':'active',  '2026-05-13':'active',
+};
+
+// ─────────────────────────────────────────────
+// IN-MEMORY CACHE (loaded from Supabase once)
+// ─────────────────────────────────────────────
+let _cache = {};
+
+function getData()       { return _cache; }
+function getActivity(ds) { return _cache[ds] || null; }
+
+async function setActivity(ds, type) {
+  if (!type) {
+    const { error } = await _db.from('logs').delete().eq('date', ds);
+    if (!error) delete _cache[ds];
+  } else {
+    const { error } = await _db.from('logs').upsert({ date: ds, activity: type });
+    if (!error) _cache[ds] = type;
+  }
+}
+
+async function loadFromSupabase() {
+  try {
+    if (!_db) throw new Error('no client');
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 6000));
+    const query = _db.from('logs').select('*');
+    const { data, error } = await Promise.race([query, timeout]);
+    if (error) throw error;
+    _cache = {};
+    (data || []).forEach(row => { _cache[row.date] = row.activity; });
+    return true;
+  } catch(e) {
+    console.warn('Supabase unavailable, using seed data:', e.message);
+    _cache = Object.assign({}, SEED);
+    return false;
+  }
+}
+
+async function seedIfEmpty() {
+  if (Object.keys(_cache).length > 0) return; // already has data
+  const rows = Object.entries(SEED).map(([date, activity]) => ({ date, activity }));
+  const { error } = await _db.from('logs').insert(rows);
+  if (error) { console.error('Seed error:', error); return; }
+  Object.assign(_cache, SEED);
+}
+
+// ─────────────────────────────────────────────
+// DATE UTILS
+// ─────────────────────────────────────────────
+function todayStr() {
+  const n = new Date();
+  return fmt(n.getFullYear(), n.getMonth()+1, n.getDate());
+}
+function fmt(y, m, d) {
+  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+function dowMon(date) { return (date.getDay() + 6) % 7; }
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let viewYear, viewMonth;
+let logSelectedType = null;
+let modalDate = null;
+let modalType = null;
+
+// ─────────────────────────────────────────────
+// SECTION 1 – DAILY LOG
+// ─────────────────────────────────────────────
+function selectLogType(t) {
+  logSelectedType = t;
+  ['active','recovery','both'].forEach(x =>
+    document.getElementById('tb-'+x).classList.toggle('sel', x===t));
+  document.getElementById('log-btn').disabled = false;
+}
+
+async function saveToday() {
+  if (!logSelectedType) return;
+  const btn = document.getElementById('log-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  await setActivity(todayStr(), logSelectedType);
+  logSelectedType = null;
+  renderAll();
+}
+
+function renderDailyLog() {
+  const now = new Date();
+  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  document.getElementById('today-date-label').textContent =
+    `${dayNames[now.getDay()]}, ${MONTHS[now.getMonth()]} ${now.getDate()}`;
+  document.getElementById('page-year').textContent = now.getFullYear();
+
+  const existing = getActivity(todayStr());
+  const badge    = document.getElementById('logged-badge');
+  const logBtn   = document.getElementById('log-btn');
+
+  if (existing) {
+    badge.style.display    = 'block';
+    badge.style.background = COLORS[existing];
+    badge.textContent      = LABELS[existing];
+    logBtn.textContent     = 'Update Today';
+    logBtn.disabled        = !logSelectedType;
+    ['active','recovery','both'].forEach(x => {
+      const active = logSelectedType ? x===logSelectedType : x===existing;
+      document.getElementById('tb-'+x).classList.toggle('sel', active);
+    });
+  } else {
+    badge.style.display = 'none';
+    logBtn.textContent  = 'Log Today';
+    logBtn.disabled     = !logSelectedType;
+    if (!logSelectedType) {
+      ['active','recovery','both'].forEach(x =>
+        document.getElementById('tb-'+x).classList.remove('sel'));
+    }
+  }
+}
+
+// ─────────────────────────────────────────────
+// SECTION 2 – MONTHLY CALENDAR
+// ─────────────────────────────────────────────
+function renderMonthCalendar() {
+  const now = new Date();
+  if (viewYear === undefined) {
+    viewYear  = 2026;
+    viewMonth = (now.getFullYear() === 2026) ? now.getMonth() : 0;
+  }
+
+  document.getElementById('cal-title').textContent = `${MONTHS[viewMonth]} ${viewYear}`;
+  document.querySelectorAll('.nav-btn')[0].style.opacity = viewMonth === 0  ? '0.25' : '1';
+  document.querySelectorAll('.nav-btn')[1].style.opacity = viewMonth === 11 ? '0.25' : '1';
+
+  const grid   = document.getElementById('cal-grid');
+  const ts_now = todayStr();
+  const data   = getData();
+  grid.innerHTML = '';
+
+  DAYS_S.forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'cal-hdr';
+    h.textContent = d;
+    grid.appendChild(h);
+  });
+
+  const firstDay    = new Date(viewYear, viewMonth, 1);
+  const offset      = dowMon(firstDay);
+  const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+  const daysInPrev  = new Date(viewYear, viewMonth, 0).getDate();
+
+  for (let i = 0; i < offset; i++) {
+    const c = document.createElement('div');
+    c.className = 'cal-cell other';
+    c.textContent = daysInPrev - offset + 1 + i;
+    grid.appendChild(c);
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const ds  = fmt(viewYear, viewMonth+1, day);
+    const act = data[ds];
+    const c   = document.createElement('div');
+    c.textContent = day;
+    if (act)             c.className = `cal-cell act-${act}`;
+    else if (ds===ts_now) c.className = 'cal-cell today-empty';
+    else                 c.className = 'cal-cell';
+    c.onclick = () => { if (_unlocked) openModal(ds, day); };
+    grid.appendChild(c);
+  }
+
+  const total = offset + daysInMonth;
+  const rem   = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let i = 1; i <= rem; i++) {
+    const c = document.createElement('div');
+    c.className = 'cal-cell other';
+    c.textContent = i;
+    grid.appendChild(c);
+  }
+}
+
+function changeMonth(dir) {
+  if (dir === -1 && viewMonth === 0)  return;
+  if (dir ===  1 && viewMonth === 11) return;
+  viewMonth += dir;
+  renderMonthCalendar();
+  renderStats();
+}
+
+// ─────────────────────────────────────────────
+// SECTION 2.5 – STATS
+// ─────────────────────────────────────────────
+function renderStats() {
+  const data = getData();
+  const m    = viewMonth;
+  const year = viewYear;
+
+  document.getElementById('stats-month-label').textContent = `${MONTHS[m]} ${year}`;
+
+  const daysInMonth = new Date(year, m + 1, 0).getDate();
+  let mA = 0, mR = 0, mB = 0;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const act = data[fmt(year, m + 1, d)];
+    if (act === 'active')        mA++;
+    else if (act === 'recovery') mR++;
+    else if (act === 'both')     mB++;
+  }
+
+  const mT = mA + mR + mB * 2;
+  const setVal = (id, val) => {
+    const el = document.getElementById(id);
+    el.textContent = val;
+    el.className   = 'ms-col-val' + (val === 0 ? ' zero' : '');
+  };
+  setVal('stat-active', mA);
+  setVal('stat-recovery', mR);
+  setVal('stat-both', mB);
+  setVal('stat-total', mT);
+}
+
+// ─────────────────────────────────────────────
+// SECTION 3 – YEAR GRID
+// ─────────────────────────────────────────────
+function renderYearGrid() {
+  const grid = document.getElementById('year-grid');
+  grid.innerHTML = '';
+
+  const data    = getData();
+  const todayDs = todayStr();
+  const yearStart = new Date(2026, 0, 1);
+  const yearEnd   = new Date(2026, 11, 31);
+
+  const gridStart = new Date(yearStart);
+  gridStart.setDate(gridStart.getDate() - dowMon(gridStart));
+
+  let totalDays = 0, totalLogged = 0;
+  let col = [];
+  let d   = new Date(gridStart);
+
+  function flushCol() {
+    if (!col.length) return;
+    const colEl = document.createElement('div');
+    colEl.className = 'year-col';
+    col.forEach(dot => {
+      const el = document.createElement('div');
+      el.className = 'ydot ' + dot.cls;
+      colEl.appendChild(el);
+    });
+    grid.appendChild(colEl);
+    col = [];
+  }
+
+  while (d <= yearEnd) {
+    const ds      = fmt(d.getFullYear(), d.getMonth()+1, d.getDate());
+    const inYear  = d >= yearStart;
+    const isFuture = ds > todayDs;
+    const act     = inYear && !isFuture ? (data[ds] || null) : null;
+
+    if (inYear && !isFuture) {
+      totalDays++;
+      if (act) totalLogged += (act === 'both' ? 2 : 1);
+    }
+
+    let cls;
+    if (!inYear)  cls = 'ghost';
+    else if (act) cls = `act-${act}`;
+    else          cls = '';
+
+    col.push({ cls });
+    if (col.length === 7) flushCol();
+    d.setDate(d.getDate() + 1);
+  }
+  flushCol();
+
+  const pct = totalDays > 0 ? Math.round(totalLogged / totalDays * 100) : 0;
+  document.getElementById('year-stat').textContent =
+    `${pct}% (${totalLogged} of ${totalDays} days)`;
+}
+
+// ─────────────────────────────────────────────
+// SECTION 4 – BY MONTH
+// ─────────────────────────────────────────────
+function renderByMonth() {
+  const now  = new Date();
+  const year = now.getFullYear();
+  document.getElementById('by-month-label').textContent = `${year} by Month`;
+
+  const container = document.getElementById('months-grid');
+  container.innerHTML = '';
+  const data = getData();
+
+  for (let m = 0; m < 12; m++) {
+    const wrapper = document.createElement('div');
+    const name = document.createElement('div');
+    name.className   = 'mini-month-name';
+    name.textContent = MONTHS_S[m];
+    wrapper.appendChild(name);
+
+    const mgrid  = document.createElement('div');
+    mgrid.className = 'mini-grid';
+
+    const firstDay    = new Date(year, m, 1);
+    const offset      = dowMon(firstDay);
+    const daysInMonth = new Date(year, m+1, 0).getDate();
+
+    for (let i = 0; i < offset; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'mdot ghost';
+      mgrid.appendChild(dot);
+    }
+    for (let day = 1; day <= daysInMonth; day++) {
+      const ds  = fmt(year, m+1, day);
+      const act = data[ds];
+      const dot = document.createElement('div');
+      dot.className = 'mdot' + (act ? ` act-${act}` : '');
+      mgrid.appendChild(dot);
+    }
+
+    wrapper.appendChild(mgrid);
+    container.appendChild(wrapper);
+  }
+}
+
+// ─────────────────────────────────────────────
+// MODAL
+// ─────────────────────────────────────────────
+const WEEKDAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+function openModal(ds, day) {
+  modalDate = ds;
+  modalType = getActivity(ds);
+  const [y,m,d] = ds.split('-').map(Number);
+  const dateObj  = new Date(y, m-1, d);
+  document.getElementById('modal-title').textContent =
+    `${WEEKDAY_NAMES[dateObj.getDay()]}, ${MONTHS[m-1]} ${day}`;
+  ['active','recovery','both'].forEach(t =>
+    document.getElementById('mb-'+t).classList.toggle('sel', t === modalType));
+  document.getElementById('modal-save').disabled = !modalType;
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-bg').classList.remove('open');
+  modalDate = null;
+  modalType = null;
+}
+
+function selectModalType(t) {
+  modalType = t;
+  ['active','recovery','both'].forEach(x =>
+    document.getElementById('mb-'+x).classList.toggle('sel', x===t));
+  document.getElementById('modal-save').disabled = false;
+}
+
+async function saveModal() {
+  if (!modalDate) return;
+  const btn = document.getElementById('modal-save');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  await setActivity(modalDate, modalType);
+  document.getElementById('modal-bg').classList.remove('open');
+  modalDate = null; modalType = null;
+  renderAll();
+}
+
+async function clearModal() {
+  if (!modalDate) return;
+  await setActivity(modalDate, null);
+  document.getElementById('modal-bg').classList.remove('open');
+  modalDate = null; modalType = null;
+  renderAll();
+}
+
+document.getElementById('modal-bg').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ─────────────────────────────────────────────
+// RENDER ALL
+// ─────────────────────────────────────────────
+function renderAll() {
+  renderDailyLog();
+  renderMonthCalendar();
+  renderStats();
+  renderYearGrid();
+  renderByMonth();
+}
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+async function init() {
+  const loaded = await loadSupabaseScript();
+  if (loaded && window.supabase) {
+    try {
+      const { createClient } = window.supabase;
+      _db = createClient(
+        'https://zoyxvbctwbzerjhlkcxo.supabase.co',
+        'sb_publishable_GGGAzytw5IDkDdGp_0T9LQ_wsdodO57'
+      );
+    } catch(e) { console.warn('Supabase init failed:', e); }
+  }
+  const ok = await loadFromSupabase();
+  if (ok) await seedIfEmpty();
+  document.getElementById('loading-overlay').classList.add('hidden');
+  applyLockState();
+  renderAll();
+}
+
+init();
+</script>
+</body>
+</html>
