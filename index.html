@@ -927,7 +927,7 @@ function renderYearGrid() {
     const isFuture = ds > todayDs;
     const act     = inYear && !isFuture ? (data[ds] || null) : null;
 
-    if (inYear && !isFuture) {
+    if (inYear && !isFuture && act !== 'injured') {
       totalDays++;
       if (act) totalLogged += (act === 'both' ? 2 : 1);
     }
