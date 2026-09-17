@@ -571,7 +571,7 @@ body {
     </div>
   </div>
 
-  <div class="legend-diagram-title">Logged Days per Year</div>
+  <div class="legend-diagram-title">2026 Logged Days by Type</div>
   <svg class="legend-diagram" id="year-amounts-chart" viewBox="0 0 300 150" xmlns="http://www.w3.org/2000/svg"></svg>
 </div>
 
@@ -1085,44 +1085,42 @@ document.getElementById('modal-bg').addEventListener('click', function(e) {
 
 function renderYearAmountsChart() {
   const data = getData();
-  const counts = {}; // { year: { active, recovery, both, injured } }
+  const c = { active: 0, recovery: 0, both: 0, injured: 0 };
 
   for (const dateStr in data) {
-    const act  = data[dateStr];
+    const act = data[dateStr];
     if (!act) continue;
-    const year = dateStr.slice(0, 4);
-    if (!counts[year]) counts[year] = { active: 0, recovery: 0, both: 0, injured: 0 };
-    if (counts[year][act] !== undefined) counts[year][act]++;
+    if (!dateStr.startsWith('2026')) continue;
+    if (c[act] !== undefined) c[act]++;
   }
 
-  const years = Object.keys(counts).sort();
-  const svg = document.getElementById('year-amounts-chart');
+  const cats = [
+    ['Active',   'active',   'var(--active)'],
+    ['A. Rec',   'recovery', 'var(--recovery)'],
+    ['Both',     'both',     'var(--both)'],
+    ['Injured',  'injured',  'var(--injured)'],
+  ];
 
-  const nowYear = new Date().getFullYear();
-  const yearsToShow = [nowYear - 2, nowYear - 1, nowYear].map(String);
-
-  const totals = yearsToShow.map(y => {
-    const c = counts[y] || { active: 0, recovery: 0, both: 0, injured: 0 };
-    return c.active + c.recovery + c.both + c.injured;
-  });
-  const maxTotal  = Math.max(...totals, 1);
-  const barW      = 50;
-  const gap       = 30;
-  const chartH    = 110;
-  const w         = yearsToShow.length * (barW + gap) + gap;
-  const h         = chartH + 40;
+  const totals   = cats.map(([, key]) => c[key]);
+  const maxTotal = Math.max(...totals, 1);
+  const barW     = 44;
+  const gap      = 22;
+  const chartH   = 110;
+  const w        = cats.length * (barW + gap) + gap;
+  const h        = chartH + 40;
 
   let svgHTML = '';
-  yearsToShow.forEach((y, i) => {
-    const total = totals[i];
+  cats.forEach(([label, key, color], i) => {
+    const total = c[key];
     const x = gap + i * (barW + gap);
     const barH = (total / maxTotal) * chartH;
     const yOff = chartH - barH;
-    svgHTML += `<rect x="${x}" y="${yOff}" width="${barW}" height="${barH}" rx="6" fill="var(--active)"></rect>`;
-    svgHTML += `<text x="${x + barW/2}" y="${chartH + 16}" font-size="12" fill="#555" text-anchor="middle">${y}</text>`;
+    svgHTML += `<rect x="${x}" y="${yOff}" width="${barW}" height="${barH}" rx="6" fill="${color}"></rect>`;
+    svgHTML += `<text x="${x + barW/2}" y="${chartH + 16}" font-size="11" fill="#555" text-anchor="middle">${label}</text>`;
     svgHTML += `<text x="${x + barW/2}" y="${yOff - 6}" font-size="11" fill="#888" text-anchor="middle">${total}</text>`;
   });
 
+  const svg = document.getElementById('year-amounts-chart');
   svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
   svg.innerHTML = svgHTML;
 }
