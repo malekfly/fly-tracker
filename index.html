@@ -1105,18 +1105,19 @@ function renderYearAmountsChart() {
   const maxTotal = Math.max(...totals, 1);
   const barW     = 44;
   const gap      = 22;
-  const chartH   = 110;
+  const chartH   = 100;
+  const topPad   = 20;
   const w        = cats.length * (barW + gap) + gap;
-  const h        = chartH + 40;
+  const h        = chartH + topPad + 40;
 
   let svgHTML = '';
   cats.forEach(([label, key, color], i) => {
     const total = c[key];
     const x = gap + i * (barW + gap);
     const barH = (total / maxTotal) * chartH;
-    const yOff = chartH - barH;
+    const yOff = topPad + (chartH - barH);
     svgHTML += `<rect x="${x}" y="${yOff}" width="${barW}" height="${barH}" rx="6" fill="${color}"></rect>`;
-    svgHTML += `<text x="${x + barW/2}" y="${chartH + 16}" font-size="11" fill="#555" text-anchor="middle">${label}</text>`;
+    svgHTML += `<text x="${x + barW/2}" y="${topPad + chartH + 16}" font-size="11" fill="#555" text-anchor="middle">${label}</text>`;
     svgHTML += `<text x="${x + barW/2}" y="${yOff - 6}" font-size="11" fill="#888" text-anchor="middle">${total}</text>`;
   });
 
