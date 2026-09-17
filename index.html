@@ -571,20 +571,8 @@ body {
     </div>
   </div>
 
-  <div class="legend-diagram-title">Fitness Activity Level</div>
-  <svg class="legend-diagram" viewBox="0 0 300 150" xmlns="http://www.w3.org/2000/svg">
-    <text x="0" y="14" font-size="11" fill="#555">Active</text>
-    <rect x="0" y="20" width="210" height="14" rx="4" fill="var(--active)"></rect>
-
-    <text x="0" y="52" font-size="11" fill="#555">Active Recovery</text>
-    <rect x="0" y="58" width="150" height="14" rx="4" fill="var(--recovery)"></rect>
-
-    <text x="0" y="90" font-size="11" fill="#555">Both</text>
-    <rect x="0" y="96" width="300" height="14" rx="4" fill="var(--both)"></rect>
-
-    <text x="0" y="128" font-size="11" fill="#555">Injured</text>
-    <rect x="0" y="134" width="6" height="14" rx="3" fill="var(--injured)"></rect>
-  </svg>
+  <div class="legend-diagram-title">Logged Days per Year</div>
+  <svg class="legend-diagram" id="year-amounts-chart" viewBox="0 0 300 150" xmlns="http://www.w3.org/2000/svg"></svg>
 </div>
 
 <!-- ── LOCK BUTTON ── -->
@@ -1095,6 +1083,64 @@ document.getElementById('modal-bg').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
 
+function renderYearAmountsChart() {
+  const data = getData();
+  const counts = {}; // { year: { active, recovery, both, injured } }
+
+  for (const dateStr in data) {
+    const act  = data[dateStr];
+    if (!act) continue;
+    const year = dateStr.slice(0, 4);
+    if (!counts[year]) counts[year] = { active: 0, recovery: 0, both: 0, injured: 0 };
+    if (counts[year][act] !== undefined) counts[year][act]++;
+  }
+
+  const years = Object.keys(counts).sort();
+  const svg = document.getElementById('year-amounts-chart');
+  if (!years.length) {
+    svg.setAttribute('viewBox', '0 0 300 60');
+    svg.innerHTML = '<text x="0" y="20" font-size="12" fill="#888">No data yet</text>';
+    return;
+  }
+
+  const totals = years.map(y => {
+    const c = counts[y];
+    return c.active + c.recovery + c.both + c.injured;
+  });
+  const maxTotal  = Math.max(...totals, 1);
+  const barW      = 40;
+  const gap       = 24;
+  const chartH    = 110;
+  const w         = years.length * (barW + gap) + gap;
+  const h         = chartH + 40;
+
+  let svgHTML = '';
+  years.forEach((y, i) => {
+    const c = counts[y];
+    const total = totals[i];
+    const x = gap + i * (barW + gap);
+    let yOff = chartH;
+    const segs = [
+      ['active',   'var(--active)'],
+      ['recovery', 'var(--recovery)'],
+      ['both',     'var(--both)'],
+      ['injured',  'var(--injured)'],
+    ];
+    segs.forEach(([key, color]) => {
+      const val = c[key];
+      if (!val) return;
+      const segH = (val / maxTotal) * chartH;
+      yOff -= segH;
+      svgHTML += `<rect x="${x}" y="${yOff}" width="${barW}" height="${segH}" fill="${color}"></rect>`;
+    });
+    svgHTML += `<text x="${x + barW/2}" y="${chartH + 16}" font-size="11" fill="#555" text-anchor="middle">${y}</text>`;
+    svgHTML += `<text x="${x + barW/2}" y="${chartH - (total/maxTotal)*chartH - 6}" font-size="10" fill="#888" text-anchor="middle">${total}</text>`;
+  });
+
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.innerHTML = svgHTML;
+}
+
 // ─────────────────────────────────────────────
 // RENDER ALL
 // ─────────────────────────────────────────────
@@ -1104,6 +1150,7 @@ function renderAll() {
   renderStats();
   renderYearGrid();
   renderByMonth();
+  renderYearAmountsChart();
 }
 
 // ─────────────────────────────────────────────
