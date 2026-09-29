@@ -216,9 +216,14 @@ body {
 .insight-num { font-size: 22px; font-weight: 700; color: var(--text); }
 .insight-label { font-size: 11px; color: #888; margin-top: 2px; }
 .insight-sub { font-size: 12px; color: #888; margin-top: 18px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.03em; }
-.heatmap { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
-.heatmap-col { display: flex; flex-direction: column; gap: 4px; }
-.hdot { width: 100%; aspect-ratio: 1; border-radius: 3px; background: #E5E5EA; }
+.heatmap-wrap { display: flex; flex-direction: column; gap: 6px; }
+.heatmap-daylabels { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 2px; }
+.heatmap-daylabels span { font-size: 9px; color: #aaa; text-align: center; text-transform: uppercase; }
+.heatmap-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+#heatmap-8wk { display: flex; flex-direction: column; gap: 4px; }
+.hdot { width: 100%; aspect-ratio: 1; border-radius: 5px; background: #EFEFF1; border: 1px solid rgba(0,0,0,0.04); box-sizing: border-box; }
+.hdot.today { outline: 2px solid #333; outline-offset: 1px; }
+.hdot.future { background: transparent; border: none; }
 .followup-box { flex: 1; background: #F5F5F7; border-radius: 12px; padding: 10px 6px; text-align: center; }
 .followup-num { font-size: 16px; font-weight: 700; }
 .followup-label { font-size: 10px; color: #888; margin-top: 2px; }
@@ -603,7 +608,12 @@ body {
   </div>
 
   <div class="insight-sub">Last 8 Weeks</div>
-  <div class="heatmap" id="heatmap-8wk"></div>
+  <div class="heatmap-wrap">
+    <div class="heatmap-daylabels">
+      <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+    </div>
+    <div id="heatmap-8wk"></div>
+  </div>
 
   <div class="insight-row">
     <div class="insight-box">
@@ -1213,26 +1223,32 @@ function renderInsights() {
   document.getElementById('ins-streak').textContent = current;
   document.getElementById('ins-best-streak').textContent = longest;
 
-  // ── 8-week heatmap ──
+  // ── 8-week heatmap (rows = weeks Mon–Sun, oldest at top) ──
   const hm = document.getElementById('heatmap-8wk');
   const today = new Date();
-  const totalDays = 56;
-  const startOffset = totalDays - 1;
+  const todayKey = toKey(today);
+  const todayDow = dowMon(today); // 0=Mon..6=Sun
+  const thisWeekMon = addDays(today, -todayDow);
+  const gridStart = addDays(thisWeekMon, -7 * 7); // start of 8 weeks ago (Monday)
   hm.innerHTML = '';
   for (let w = 0; w < 8; w++) {
-    const col = document.createElement('div');
-    col.className = 'heatmap-col';
+    const row = document.createElement('div');
+    row.className = 'heatmap-row';
     for (let d = 0; d < 7; d++) {
-      const offset = startOffset - (w * 7 + d);
-      const dateObj = addDays(today, -offset);
+      const dateObj = addDays(gridStart, w * 7 + d);
       const key = toKey(dateObj);
-      const act = data[key];
       const dot = document.createElement('div');
       dot.className = 'hdot';
-      if (dateObj <= today && COLORS[act]) dot.style.background = COLORS[act];
-      col.appendChild(dot);
+      if (dateObj > today) {
+        dot.classList.add('future');
+      } else {
+        const act = data[key];
+        if (COLORS[act]) dot.style.background = COLORS[act];
+        if (key === todayKey) dot.classList.add('today');
+      }
+      row.appendChild(dot);
     }
-    hm.appendChild(col);
+    hm.appendChild(row);
   }
 
   // ── Recovery ratio ──
