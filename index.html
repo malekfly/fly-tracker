@@ -211,6 +211,18 @@ body {
 .legend-diagram-title { font-size: 12px; color: #888; margin-top: 18px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
 .legend-diagram { width: 100%; height: auto; margin-top: 4px; }
 
+.insight-row { display: flex; gap: 10px; margin-top: 10px; }
+.insight-box { flex: 1; background: #F5F5F7; border-radius: 12px; padding: 12px 10px; text-align: center; }
+.insight-num { font-size: 22px; font-weight: 700; color: var(--text); }
+.insight-label { font-size: 11px; color: #888; margin-top: 2px; }
+.insight-sub { font-size: 12px; color: #888; margin-top: 18px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.03em; }
+.heatmap { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+.heatmap-col { display: flex; flex-direction: column; gap: 4px; }
+.hdot { width: 100%; aspect-ratio: 1; border-radius: 3px; background: #E5E5EA; }
+.followup-box { flex: 1; background: #F5F5F7; border-radius: 12px; padding: 10px 6px; text-align: center; }
+.followup-num { font-size: 16px; font-weight: 700; }
+.followup-label { font-size: 10px; color: #888; margin-top: 2px; }
+
 /* ── STATS BUBBLE ── */
 .ms-cols {
   display: grid;
@@ -573,6 +585,39 @@ body {
 
   <div class="legend-diagram-title">2026 Logged Days by Type</div>
   <svg class="legend-diagram" id="year-amounts-chart" viewBox="0 0 300 150" xmlns="http://www.w3.org/2000/svg"></svg>
+</div>
+
+<!-- ── SECTION 6: INSIGHTS ── -->
+<div class="card narrow">
+  <div class="card-label">Insights</div>
+
+  <div class="insight-row">
+    <div class="insight-box">
+      <div class="insight-num" id="ins-streak">—</div>
+      <div class="insight-label">Current Streak</div>
+    </div>
+    <div class="insight-box">
+      <div class="insight-num" id="ins-best-streak">—</div>
+      <div class="insight-label">Longest Streak</div>
+    </div>
+  </div>
+
+  <div class="insight-sub">Last 8 Weeks</div>
+  <div class="heatmap" id="heatmap-8wk"></div>
+
+  <div class="insight-row">
+    <div class="insight-box">
+      <div class="insight-num" id="ins-recovery-ratio">—</div>
+      <div class="insight-label">Recovery Ratio</div>
+    </div>
+    <div class="insight-box">
+      <div class="insight-num" id="ins-injury-gap">—</div>
+      <div class="insight-label">Avg Days Between Injuries</div>
+    </div>
+  </div>
+
+  <div class="insight-sub">After an Injury, I Usually Go</div>
+  <div class="insight-row" id="injury-followup-row"></div>
 </div>
 
 <!-- ── LOCK BUTTON ── -->
@@ -1127,6 +1172,125 @@ function renderYearAmountsChart() {
 }
 
 // ─────────────────────────────────────────────
+// INSIGHTS
+// ─────────────────────────────────────────────
+function dateFromStr(s) {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+function addDays(dateObj, n) {
+  const d = new Date(dateObj);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+function toKey(dateObj) {
+  return fmt(dateObj.getFullYear(), dateObj.getMonth() + 1, dateObj.getDate());
+}
+
+function renderInsights() {
+  const data = getData();
+  const trained = act => act === 'active' || act === 'recovery' || act === 'both';
+
+  // ── Current streak & longest streak ──
+  let cursor = new Date();
+  let current = 0;
+  while (true) {
+    const key = toKey(cursor);
+    if (trained(data[key])) { current++; cursor = addDays(cursor, -1); }
+    else break;
+  }
+
+  const allDates = Object.keys(data).filter(k => trained(data[k])).sort();
+  let longest = 0, run = 0, prevDate = null;
+  allDates.forEach(k => {
+    const d = dateFromStr(k);
+    if (prevDate && (d - prevDate) === 86400000) run++;
+    else run = 1;
+    longest = Math.max(longest, run);
+    prevDate = d;
+  });
+
+  document.getElementById('ins-streak').textContent = current;
+  document.getElementById('ins-best-streak').textContent = longest;
+
+  // ── 8-week heatmap ──
+  const hm = document.getElementById('heatmap-8wk');
+  const today = new Date();
+  const totalDays = 56;
+  const startOffset = totalDays - 1;
+  hm.innerHTML = '';
+  for (let w = 0; w < 8; w++) {
+    const col = document.createElement('div');
+    col.className = 'heatmap-col';
+    for (let d = 0; d < 7; d++) {
+      const offset = startOffset - (w * 7 + d);
+      const dateObj = addDays(today, -offset);
+      const key = toKey(dateObj);
+      const act = data[key];
+      const dot = document.createElement('div');
+      dot.className = 'hdot';
+      if (dateObj <= today && COLORS[act]) dot.style.background = COLORS[act];
+      col.appendChild(dot);
+    }
+    hm.appendChild(col);
+  }
+
+  // ── Recovery ratio ──
+  const activeDays = Object.keys(data).filter(k => data[k] === 'active');
+  let followedByRecovery = 0;
+  activeDays.forEach(k => {
+    const next = toKey(addDays(dateFromStr(k), 1));
+    const nextAct = data[next];
+    if (nextAct === 'recovery' || nextAct === 'both') followedByRecovery++;
+  });
+  const ratio = activeDays.length ? Math.round((followedByRecovery / activeDays.length) * 100) : 0;
+  document.getElementById('ins-recovery-ratio').textContent = activeDays.length ? ratio + '%' : '—';
+
+  // ── Avg days between injuries ──
+  const injuryDates = Object.keys(data).filter(k => data[k] === 'injured').sort();
+  let avgGap = '—';
+  if (injuryDates.length >= 2) {
+    let gaps = [];
+    for (let i = 1; i < injuryDates.length; i++) {
+      const diff = (dateFromStr(injuryDates[i]) - dateFromStr(injuryDates[i-1])) / 86400000;
+      gaps.push(diff);
+    }
+    avgGap = Math.round(gaps.reduce((a,b)=>a+b,0) / gaps.length);
+  }
+  document.getElementById('ins-injury-gap').textContent = avgGap;
+
+  // ── After an injury, I usually go ──
+  const followRow = document.getElementById('injury-followup-row');
+  followRow.innerHTML = '';
+  const followCounts = { active: 0, recovery: 0, both: 0, injured: 0 };
+  const seenStart = new Set();
+  injuryDates.forEach(k => {
+    const prevKey = toKey(addDays(dateFromStr(k), -1));
+    if (data[prevKey] === 'injured') return; // not the start of an injury run
+    // walk forward past consecutive injury days
+    let cur = dateFromStr(k);
+    while (data[toKey(cur)] === 'injured') cur = addDays(cur, 1);
+    const nextAct = data[toKey(cur)];
+    if (followCounts[nextAct] !== undefined) followCounts[nextAct]++;
+  });
+  const followLabels = [
+    ['Active', 'active', 'var(--active)'],
+    ['A. Rec', 'recovery', 'var(--recovery)'],
+    ['Both', 'both', 'var(--both)'],
+  ];
+  if (!injuryDates.length) {
+    followRow.innerHTML = '<div class="insight-label" style="padding:8px 0;">No injuries logged yet</div>';
+  } else {
+    followLabels.forEach(([label, key, color]) => {
+      const box = document.createElement('div');
+      box.className = 'followup-box';
+      box.innerHTML = `<div class="followup-num" style="color:${color}">${followCounts[key]}</div><div class="followup-label">${label}</div>`;
+      followRow.appendChild(box);
+    });
+  }
+}
+
+// ─────────────────────────────────────────────
 // RENDER ALL
 // ─────────────────────────────────────────────
 function renderAll() {
@@ -1136,6 +1300,7 @@ function renderAll() {
   renderYearGrid();
   renderByMonth();
   renderYearAmountsChart();
+  renderInsights();
 }
 
 // ─────────────────────────────────────────────
