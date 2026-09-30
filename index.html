@@ -237,14 +237,8 @@ body {
 .ring-pct { font-size: 26px; font-weight: 800; color: var(--text); }
 .ring-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.03em; }
 
-.score-hero { border-radius: 18px; padding: 14px 10px; text-align: center; transition: background 0.4s ease; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.score-hero.low    { background: #F1EAF4; }
-.score-hero.mid    { background: #FFF6E0; }
-.score-hero.high   { background: #EBF6E0; }
-.score-num  { font-size: 32px; font-weight: 800; line-height: 1; }
-.score-hero.low  .score-num { color: #8E5B9E; }
-.score-hero.mid  .score-num { color: #C08A1E; }
-.score-hero.high .score-num { color: #4C8B2B; }
+.score-hero { border-radius: 18px; padding: 14px 10px; text-align: center; transition: background 0.4s ease; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #FBF3D5; }
+.score-num  { font-size: 32px; font-weight: 800; line-height: 1; color: #C9971A; }
 .score-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 4px; }
 .score-sub { font-size: 12px; color: #999; margin-top: 6px; }
 .month-combo-row { display: flex; align-items: center; gap: 12px; }
@@ -539,6 +533,28 @@ body {
   </div>
 </div>
 
+<!-- ── SECTION 2.4: MONTH SCORE ── -->
+<div class="card narrow">
+  <div class="card-label" id="ins-month-heading">This Month</div>
+  <div class="month-combo-row">
+    <div class="score-hero" id="score-hero">
+      <div class="score-num" id="ins-score">—</div>
+      <div class="score-label">Fitness Score</div>
+      <div class="score-sub" id="ins-score-sub">—</div>
+    </div>
+    <div class="ring-wrap">
+      <svg viewBox="0 0 120 120" class="consistency-ring">
+        <circle cx="60" cy="60" r="50" fill="none" stroke="#EDEDED" stroke-width="12"></circle>
+        <g id="ring-segments" transform="rotate(-90 60 60)"></g>
+      </svg>
+      <div class="ring-center">
+        <div class="ring-pct" id="ins-month-ring-pct">—</div>
+        <div class="ring-label" id="ins-month-ring-label">trained</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── SECTION 2.5: STATS ── -->
 <div class="card narrow">
   <div class="card-label" id="stats-month-label">This Month</div>
@@ -590,25 +606,6 @@ body {
 <!-- ── SECTION 5: INSIGHTS ── -->
 <div class="card narrow">
   <div class="card-label">Insights</div>
-
-  <div class="insight-sub" id="ins-month-heading">This Month</div>
-  <div class="month-combo-row">
-    <div class="score-hero" id="score-hero">
-      <div class="score-num" id="ins-score">—</div>
-      <div class="score-label">Fitness Score</div>
-      <div class="score-sub" id="ins-score-sub">—</div>
-    </div>
-    <div class="ring-wrap">
-      <svg viewBox="0 0 120 120" class="consistency-ring">
-        <circle cx="60" cy="60" r="50" fill="none" stroke="#EDEDED" stroke-width="12"></circle>
-        <g id="ring-segments" transform="rotate(-90 60 60)"></g>
-      </svg>
-      <div class="ring-center">
-        <div class="ring-pct" id="ins-month-ring-pct">—</div>
-        <div class="ring-label" id="ins-month-ring-label">trained</div>
-      </div>
-    </div>
-  </div>
 
   <div class="insight-row">
     <div class="insight-box">
@@ -1385,18 +1382,13 @@ function renderInsights() {
   let score = Math.round(ringPct * 0.55 + streakScore * 0.30 + (injuredRecently ? 0 : 15));
   score = Math.max(0, Math.min(100, score));
 
-  const heroEl = document.getElementById('score-hero');
   const scoreSubEl = document.getElementById('ins-score-sub');
   document.getElementById('ins-score').textContent = score;
-  heroEl.classList.remove('low', 'mid', 'high');
   if (score < 40) {
-    heroEl.classList.add('low');
     scoreSubEl.textContent = injuredRecently ? 'Recovering — take it easy' : 'Room to build back up';
   } else if (score < 70) {
-    heroEl.classList.add('mid');
     scoreSubEl.textContent = 'Steady — keep the momentum going';
   } else {
-    heroEl.classList.add('high');
     scoreSubEl.textContent = 'Strong consistency right now';
   }
 }
