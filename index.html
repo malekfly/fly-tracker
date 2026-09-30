@@ -1219,7 +1219,7 @@ function renderInsights() {
   const colW = 320 / 8, rowH = 210 / 7;
 
   let glowHTML = `<defs><filter id="glowblur" x="-100%" y="-100%" width="300%" height="300%">
-    <feGaussianBlur stdDeviation="10"></feGaussianBlur>
+    <feGaussianBlur stdDeviation="6"></feGaussianBlur>
   </filter></defs>`;
 
   for (let w = 0; w < 8; w++) {
@@ -1233,22 +1233,7 @@ function renderInsights() {
       if (!color) continue;
       const cx = colW * w + colW / 2;
       const cy = rowH * d + rowH / 2;
-      glowHTML += `<circle cx="${cx}" cy="${cy}" r="16" fill="${color}" opacity="0.55" filter="url(#glowblur)"></circle>`;
-    }
-  }
-  // sharp core dots on top so individual days stay readable
-  for (let w = 0; w < 8; w++) {
-    for (let d = 0; d < 7; d++) {
-      const offset = startOffset - (w * 7 + d);
-      const dateObj = addDays(today, -offset);
-      if (dateObj > today) continue;
-      const key = toKey(dateObj);
-      const act = data[key];
-      const color = COLORS[act];
-      if (!color) continue;
-      const cx = colW * w + colW / 2;
-      const cy = rowH * d + rowH / 2;
-      glowHTML += `<circle cx="${cx}" cy="${cy}" r="5" fill="${color}"></circle>`;
+      glowHTML += `<circle cx="${cx}" cy="${cy}" r="17" fill="${color}" opacity="0.9" filter="url(#glowblur)"></circle>`;
     }
   }
   hm.innerHTML = glowHTML;
