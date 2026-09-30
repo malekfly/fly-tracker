@@ -233,6 +233,17 @@ body {
 .ring-pct { font-size: 26px; font-weight: 800; color: var(--text); }
 .ring-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.03em; }
 
+.score-hero { border-radius: 18px; padding: 20px 16px; text-align: center; margin-bottom: 4px; transition: background 0.4s ease; }
+.score-hero.low    { background: linear-gradient(160deg, #FCEAEA, #FDF7F5); }
+.score-hero.mid    { background: linear-gradient(160deg, #FFF6E0, #FFFBF0); }
+.score-hero.high   { background: linear-gradient(160deg, #EBF6E0, #F6FBEF); }
+.score-num  { font-size: 44px; font-weight: 800; line-height: 1; }
+.score-hero.low  .score-num { color: #C0392B; }
+.score-hero.mid  .score-num { color: #C08A1E; }
+.score-hero.high .score-num { color: #4C8B2B; }
+.score-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 4px; }
+.score-sub { font-size: 12px; color: #999; margin-top: 6px; }
+
 /* ── STATS BUBBLE ── */
 .ms-cols {
   display: grid;
@@ -574,6 +585,12 @@ body {
 <!-- ── SECTION 5: INSIGHTS ── -->
 <div class="card narrow">
   <div class="card-label">Insights</div>
+
+  <div class="score-hero" id="score-hero">
+    <div class="score-num" id="ins-score">—</div>
+    <div class="score-label">Fitness Score</div>
+    <div class="score-sub" id="ins-score-sub">—</div>
+  </div>
 
   <div class="insight-row">
     <div class="insight-box">
@@ -1314,6 +1331,30 @@ function renderInsights() {
   ring.style.strokeDasharray  = circumference;
   ring.style.strokeDashoffset = circumference * (1 - ringPct / 100);
   document.getElementById('ins-month-ring-pct').textContent = ringPct + '%';
+
+  // ── Fitness Score (blend of consistency, streak, recent injury status) ──
+  let injuredRecently = false;
+  for (let i = 0; i < 7; i++) {
+    if (data[toKey(addDays(today, -i))] === 'injured') { injuredRecently = true; break; }
+  }
+  const streakScore = Math.min(current, 14) / 14 * 100;
+  let score = Math.round(ringPct * 0.55 + streakScore * 0.30 + (injuredRecently ? 0 : 15));
+  score = Math.max(0, Math.min(100, score));
+
+  const heroEl = document.getElementById('score-hero');
+  const scoreSubEl = document.getElementById('ins-score-sub');
+  document.getElementById('ins-score').textContent = score;
+  heroEl.classList.remove('low', 'mid', 'high');
+  if (score < 40) {
+    heroEl.classList.add('low');
+    scoreSubEl.textContent = injuredRecently ? 'Recovering — take it easy' : 'Room to build back up';
+  } else if (score < 70) {
+    heroEl.classList.add('mid');
+    scoreSubEl.textContent = 'Steady — keep the momentum going';
+  } else {
+    heroEl.classList.add('high');
+    scoreSubEl.textContent = 'Strong consistency right now';
+  }
 }
 
 // ─────────────────────────────────────────────
