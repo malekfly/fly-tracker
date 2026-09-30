@@ -226,9 +226,12 @@ body {
 .month-rank-pct { font-size: 24px; font-weight: 800; color: var(--text); }
 .month-rank-name { font-size: 12px; color: #777; margin-top: 2px; font-weight: 600; }
 .hdot { width: 100%; aspect-ratio: 1; border-radius: 3px; background: #E5E5EA; }
-.followup-box { flex: 1; background: #F5F5F7; border-radius: 12px; padding: 10px 6px; text-align: center; }
-.followup-num { font-size: 16px; font-weight: 700; }
-.followup-label { font-size: 10px; color: #888; margin-top: 2px; }
+.ring-wrap { position: relative; width: 140px; height: 140px; margin: 6px auto 0; }
+.consistency-ring { width: 100%; height: 100%; transform: rotate(0deg); }
+#ring-progress { transition: stroke-dashoffset 0.6s ease; }
+.ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring-pct { font-size: 26px; font-weight: 800; color: var(--text); }
+.ring-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.03em; }
 
 /* ── STATS BUBBLE ── */
 .ms-cols {
@@ -608,8 +611,17 @@ body {
     </div>
   </div>
 
-  <div class="insight-sub">After an Injury, I Usually Go</div>
-  <div class="insight-row" id="injury-followup-row"></div>
+  <div class="insight-sub">This Month's Consistency</div>
+  <div class="ring-wrap">
+    <svg viewBox="0 0 120 120" class="consistency-ring">
+      <circle cx="60" cy="60" r="50" fill="none" stroke="#EDEDED" stroke-width="12"></circle>
+      <circle id="ring-progress" cx="60" cy="60" r="50" fill="none" stroke="var(--active)" stroke-width="12" stroke-linecap="round" transform="rotate(-90 60 60)"></circle>
+    </svg>
+    <div class="ring-center">
+      <div class="ring-pct" id="ins-month-ring-pct">—</div>
+      <div class="ring-label" id="ins-month-ring-label">trained</div>
+    </div>
+  </div>
 </div>
 
 <!-- ── SECTION 6: LEGEND ── -->
@@ -1231,7 +1243,7 @@ function renderInsights() {
   document.getElementById('ins-streak').textContent = current;
   document.getElementById('ins-best-streak').textContent = longest;
 
-  // ── Best & Worst Month (2026, elapsed days only, injured excluded both sides) ──
+  // ── Best & Worst Month (2026; injured counts as a miss, not excluded) ──
   const today = new Date();
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const monthStats = []; // { month, pct, trained, elapsed }
@@ -1246,8 +1258,7 @@ function renderInsights() {
       if (dateObj > today) break;
       const key = fmt(2026, m + 1, d);
       const act = data[key];
-      if (act === 'injured') continue; // excluded from both sides
-      elapsed++;
+      elapsed++; // injured days count toward elapsed — they're a miss, not excluded
       if (act === 'active' || act === 'recovery' || act === 'both') trained++;
     }
     if (elapsed > 0) {
@@ -1288,35 +1299,23 @@ function renderInsights() {
   }
   document.getElementById('ins-injury-gap').textContent = avgGap;
 
-  // ── After an injury, I usually go ──
-  const followRow = document.getElementById('injury-followup-row');
-  followRow.innerHTML = '';
-  const followCounts = { active: 0, recovery: 0, both: 0, injured: 0 };
-  const seenStart = new Set();
-  injuryDates.forEach(k => {
-    const prevKey = toKey(addDays(dateFromStr(k), -1));
-    if (data[prevKey] === 'injured') return; // not the start of an injury run
-    // walk forward past consecutive injury days
-    let cur = dateFromStr(k);
-    while (data[toKey(cur)] === 'injured') cur = addDays(cur, 1);
-    const nextAct = data[toKey(cur)];
-    if (followCounts[nextAct] !== undefined) followCounts[nextAct]++;
-  });
-  const followLabels = [
-    ['Active', 'active', 'var(--active)'],
-    ['A. Rec', 'recovery', 'var(--recovery)'],
-    ['Both', 'both', 'var(--both)'],
-  ];
-  if (!injuryDates.length) {
-    followRow.innerHTML = '<div class="insight-label" style="padding:8px 0;">No injuries logged yet</div>';
-  } else {
-    followLabels.forEach(([label, key, color]) => {
-      const box = document.createElement('div');
-      box.className = 'followup-box';
-      box.innerHTML = `<div class="followup-num" style="color:${color}">${followCounts[key]}</div><div class="followup-label">${label}</div>`;
-      followRow.appendChild(box);
-    });
+  // ── This Month's Consistency ring (injured counts as a miss) ──
+  const nowM = today.getMonth();
+  const daysInThisMonth = new Date(2026, nowM + 1, 0).getDate();
+  let mTrained = 0, mElapsed = 0;
+  for (let d = 1; d <= daysInThisMonth; d++) {
+    const dateObj = new Date(2026, nowM, d);
+    if (dateObj > today) break;
+    const act = data[fmt(2026, nowM + 1, d)];
+    mElapsed++;
+    if (act === 'active' || act === 'recovery' || act === 'both') mTrained++;
   }
+  const ringPct = mElapsed ? Math.round((mTrained / mElapsed) * 100) : 0;
+  const ring = document.getElementById('ring-progress');
+  const circumference = 2 * Math.PI * 50;
+  ring.style.strokeDasharray  = circumference;
+  ring.style.strokeDashoffset = circumference * (1 - ringPct / 100);
+  document.getElementById('ins-month-ring-pct').textContent = ringPct + '%';
 }
 
 // ─────────────────────────────────────────────
