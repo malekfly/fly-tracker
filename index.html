@@ -1284,22 +1284,22 @@ function renderInsights() {
       if (counts[act] !== undefined) counts[act]++;
     }
     if (elapsed > 0) {
-      monthStats.push({ month: monthNames[m], pct: Math.round((trained / elapsed) * 100), counts });
+      monthStats.push({ month: monthNames[m], pct: Math.round((trained / elapsed) * 100), counts, elapsed });
     }
   }
 
-  function renderBreakdown(el, counts) {
+  function renderBreakdown(el, counts, elapsed) {
     const rows = [
-      ['Active',   'active',   'var(--active)'],
-      ['A. Rec',   'recovery', 'var(--recovery)'],
-      ['Both',     'both',     'var(--both)'],
-      ['Injured',  'injured',  'var(--injured)'],
+      ['Active', 'active',   'var(--active)'],
+      ['A. Rec', 'recovery', 'var(--recovery)'],
+      ['Both',   'both',     'var(--both)'],
     ];
     el.innerHTML = rows
       .filter(([, key]) => counts[key] > 0)
-      .map(([label, key, color]) =>
-        `<div class="mrb-line"><div class="mrb-dot" style="background:${color}"></div>${label}: ${counts[key]}</div>`
-      ).join('');
+      .map(([label, key, color]) => {
+        const pct = Math.round((counts[key] / elapsed) * 100);
+        return `<div class="mrb-line"><div class="mrb-dot" style="background:${color}"></div>${label}: ${pct}%</div>`;
+      }).join('');
   }
 
   if (monthStats.length) {
@@ -1309,8 +1309,8 @@ function renderInsights() {
     document.getElementById('ins-best-month-name').textContent = best.month;
     document.getElementById('ins-worst-month-pct').textContent  = worst.pct + '%';
     document.getElementById('ins-worst-month-name').textContent = worst.month;
-    renderBreakdown(document.getElementById('ins-best-month-breakdown'), best.counts);
-    renderBreakdown(document.getElementById('ins-worst-month-breakdown'), worst.counts);
+    renderBreakdown(document.getElementById('ins-best-month-breakdown'), best.counts, best.elapsed);
+    renderBreakdown(document.getElementById('ins-worst-month-breakdown'), worst.counts, worst.elapsed);
   }
 
   // ── Recovery ratio ──
