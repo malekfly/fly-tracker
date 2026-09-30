@@ -218,6 +218,13 @@ body {
 .insight-sub { font-size: 12px; color: #888; margin-top: 18px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.03em; }
 .heatmap { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
 .heatmap-col { display: flex; flex-direction: column; gap: 4px; }
+.month-rank-row { display: flex; gap: 10px; }
+.month-rank-card { flex: 1; border-radius: 16px; padding: 16px 10px; text-align: center; }
+.month-rank-card.best  { background: linear-gradient(160deg, #EEF6DA, #F7FBEF); }
+.month-rank-card.worst { background: linear-gradient(160deg, #FCEAEA, #FDF5F5); }
+.month-rank-icon { font-size: 20px; margin-bottom: 4px; }
+.month-rank-pct { font-size: 24px; font-weight: 800; color: var(--text); }
+.month-rank-name { font-size: 12px; color: #777; margin-top: 2px; font-weight: 600; }
 .hdot { width: 100%; aspect-ratio: 1; border-radius: 3px; background: #E5E5EA; }
 .followup-box { flex: 1; background: #F5F5F7; border-radius: 12px; padding: 10px 6px; text-align: center; }
 .followup-num { font-size: 16px; font-weight: 700; }
@@ -576,8 +583,19 @@ body {
     </div>
   </div>
 
-  <div class="insight-sub">Last 8 Weeks</div>
-  <div class="heatmap" id="heatmap-8wk"></div>
+  <div class="insight-sub">Best &amp; Worst Month</div>
+  <div class="month-rank-row">
+    <div class="month-rank-card best">
+      <div class="month-rank-icon">🏆</div>
+      <div class="month-rank-pct" id="ins-best-month-pct">—</div>
+      <div class="month-rank-name" id="ins-best-month-name">—</div>
+    </div>
+    <div class="month-rank-card worst">
+      <div class="month-rank-icon">📉</div>
+      <div class="month-rank-pct" id="ins-worst-month-pct">—</div>
+      <div class="month-rank-name" id="ins-worst-month-name">—</div>
+    </div>
+  </div>
 
   <div class="insight-row">
     <div class="insight-box">
@@ -1213,26 +1231,37 @@ function renderInsights() {
   document.getElementById('ins-streak').textContent = current;
   document.getElementById('ins-best-streak').textContent = longest;
 
-  // ── 8-week heatmap ──
-  const hm = document.getElementById('heatmap-8wk');
+  // ── Best & Worst Month (2026, elapsed days only, injured excluded both sides) ──
   const today = new Date();
-  const totalDays = 56;
-  const startOffset = totalDays - 1;
-  hm.innerHTML = '';
-  for (let w = 0; w < 8; w++) {
-    const col = document.createElement('div');
-    col.className = 'heatmap-col';
-    for (let d = 0; d < 7; d++) {
-      const offset = startOffset - (w * 7 + d);
-      const dateObj = addDays(today, -offset);
-      const key = toKey(dateObj);
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthStats = []; // { month, pct, trained, elapsed }
+
+  for (let m = 0; m < 12; m++) {
+    const monthStart = new Date(2026, m, 1);
+    if (monthStart > today) break; // future months not started yet
+    const daysInMonth = new Date(2026, m + 1, 0).getDate();
+    let trained = 0, elapsed = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateObj = new Date(2026, m, d);
+      if (dateObj > today) break;
+      const key = fmt(2026, m + 1, d);
       const act = data[key];
-      const dot = document.createElement('div');
-      dot.className = 'hdot';
-      if (dateObj <= today && COLORS[act]) dot.style.background = COLORS[act];
-      col.appendChild(dot);
+      if (act === 'injured') continue; // excluded from both sides
+      elapsed++;
+      if (act === 'active' || act === 'recovery' || act === 'both') trained++;
     }
-    hm.appendChild(col);
+    if (elapsed > 0) {
+      monthStats.push({ month: monthNames[m], pct: Math.round((trained / elapsed) * 100) });
+    }
+  }
+
+  if (monthStats.length) {
+    const best  = monthStats.reduce((a, b) => (b.pct > a.pct ? b : a));
+    const worst = monthStats.reduce((a, b) => (b.pct < a.pct ? b : a));
+    document.getElementById('ins-best-month-pct').textContent  = best.pct + '%';
+    document.getElementById('ins-best-month-name').textContent = best.month;
+    document.getElementById('ins-worst-month-pct').textContent  = worst.pct + '%';
+    document.getElementById('ins-worst-month-name').textContent = worst.month;
   }
 
   // ── Recovery ratio ──
