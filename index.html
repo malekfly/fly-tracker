@@ -233,7 +233,6 @@ body {
 .hdot { width: 100%; aspect-ratio: 1; border-radius: 3px; background: #E5E5EA; }
 .ring-wrap { position: relative; width: 120px; height: 120px; margin: 0 auto; flex-shrink: 0; }
 .consistency-ring { width: 100%; height: 100%; transform: rotate(0deg); }
-#ring-progress { transition: stroke-dashoffset 0.6s ease; }
 .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .ring-pct { font-size: 26px; font-weight: 800; color: var(--text); }
 .ring-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.03em; }
@@ -592,6 +591,25 @@ body {
 <div class="card narrow">
   <div class="card-label">Insights</div>
 
+  <div class="insight-sub">This Month</div>
+  <div class="month-combo-row">
+    <div class="score-hero" id="score-hero">
+      <div class="score-num" id="ins-score">—</div>
+      <div class="score-label">Fitness Score</div>
+      <div class="score-sub" id="ins-score-sub">—</div>
+    </div>
+    <div class="ring-wrap">
+      <svg viewBox="0 0 120 120" class="consistency-ring">
+        <circle cx="60" cy="60" r="50" fill="none" stroke="#EDEDED" stroke-width="12"></circle>
+        <g id="ring-segments" transform="rotate(-90 60 60)"></g>
+      </svg>
+      <div class="ring-center">
+        <div class="ring-pct" id="ins-month-ring-pct">—</div>
+        <div class="ring-label" id="ins-month-ring-label">trained</div>
+      </div>
+    </div>
+  </div>
+
   <div class="insight-row">
     <div class="insight-box">
       <div class="insight-num" id="ins-streak">—</div>
@@ -625,25 +643,6 @@ body {
     <div class="insight-box">
       <div class="insight-num" id="ins-injury-gap">—</div>
       <div class="insight-label">Avg Days Between Injuries</div>
-    </div>
-  </div>
-
-  <div class="insight-sub">This Month</div>
-  <div class="month-combo-row">
-    <div class="score-hero" id="score-hero">
-      <div class="score-num" id="ins-score">—</div>
-      <div class="score-label">Fitness Score</div>
-      <div class="score-sub" id="ins-score-sub">—</div>
-    </div>
-    <div class="ring-wrap">
-      <svg viewBox="0 0 120 120" class="consistency-ring">
-        <circle cx="60" cy="60" r="50" fill="none" stroke="#EDEDED" stroke-width="12"></circle>
-        <circle id="ring-progress" cx="60" cy="60" r="50" fill="none" stroke="var(--active)" stroke-width="12" stroke-linecap="round" transform="rotate(-90 60 60)"></circle>
-      </svg>
-      <div class="ring-center">
-        <div class="ring-pct" id="ins-month-ring-pct">—</div>
-        <div class="ring-label" id="ins-month-ring-label">trained</div>
-      </div>
     </div>
   </div>
 </div>
@@ -1341,22 +1340,39 @@ function renderInsights() {
   }
   document.getElementById('ins-injury-gap').textContent = avgGap;
 
-  // ── This Month's Consistency ring (injured counts as a miss) ──
+  // ── This Month's Consistency ring (segmented: Active / A.Rec / Both; injured counts as a miss) ──
   const nowM = today.getMonth();
   const daysInThisMonth = new Date(2026, nowM + 1, 0).getDate();
+  const mCounts = { active: 0, recovery: 0, both: 0 };
   let mTrained = 0, mElapsed = 0;
   for (let d = 1; d <= daysInThisMonth; d++) {
     const dateObj = new Date(2026, nowM, d);
     if (dateObj > today) break;
     const act = data[fmt(2026, nowM + 1, d)];
     mElapsed++;
-    if (act === 'active' || act === 'recovery' || act === 'both') mTrained++;
+    if (mCounts[act] !== undefined) { mCounts[act]++; mTrained++; }
   }
   const ringPct = mElapsed ? Math.round((mTrained / mElapsed) * 100) : 0;
-  const ring = document.getElementById('ring-progress');
   const circumference = 2 * Math.PI * 50;
-  ring.style.strokeDasharray  = circumference;
-  ring.style.strokeDashoffset = circumference * (1 - ringPct / 100);
+  const segOrder = [
+    ['active',   'var(--active)'],
+    ['recovery', 'var(--recovery)'],
+    ['both',     'var(--both)'],
+  ];
+  let cumulative = 0;
+  let segHTML = '';
+  if (mElapsed) {
+    segOrder.forEach(([key, color]) => {
+      const count = mCounts[key];
+      if (!count) return;
+      const segLen = (count / mElapsed) * circumference;
+      segHTML += `<circle cx="60" cy="60" r="50" fill="none" stroke="${color}" stroke-width="12"
+        stroke-dasharray="${segLen} ${circumference - segLen}"
+        stroke-dashoffset="${circumference - cumulative}"></circle>`;
+      cumulative += segLen;
+    });
+  }
+  document.getElementById('ring-segments').innerHTML = segHTML;
   document.getElementById('ins-month-ring-pct').textContent = ringPct + '%';
 
   // ── Fitness Score (blend of consistency, streak, recent injury status) ──
