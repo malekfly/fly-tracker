@@ -216,9 +216,7 @@ body {
 .insight-num { font-size: 22px; font-weight: 700; color: var(--text); }
 .insight-label { font-size: 11px; color: #888; margin-top: 2px; }
 .insight-sub { font-size: 12px; color: #888; margin-top: 18px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.03em; }
-.heatmap { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
-.heatmap-col { display: flex; flex-direction: column; gap: 4px; }
-.hdot { width: 100%; aspect-ratio: 1; border-radius: 3px; background: #E5E5EA; }
+.heatmap { width: 100%; height: auto; background: #FAFAFA; border-radius: 10px; }
 .followup-box { flex: 1; background: #F5F5F7; border-radius: 12px; padding: 10px 6px; text-align: center; }
 .followup-num { font-size: 16px; font-weight: 700; }
 .followup-label { font-size: 10px; color: #888; margin-top: 2px; }
@@ -577,7 +575,7 @@ body {
   </div>
 
   <div class="insight-sub">Last 8 Weeks</div>
-  <div class="heatmap" id="heatmap-8wk"></div>
+  <svg class="heatmap" id="heatmap-8wk" viewBox="0 0 320 210" xmlns="http://www.w3.org/2000/svg"></svg>
 
   <div class="insight-row">
     <div class="insight-box">
@@ -1213,27 +1211,47 @@ function renderInsights() {
   document.getElementById('ins-streak').textContent = current;
   document.getElementById('ins-best-streak').textContent = longest;
 
-  // ── 8-week heatmap ──
+  // ── 8-week heatmap (glow/blob style) ──
   const hm = document.getElementById('heatmap-8wk');
   const today = new Date();
   const totalDays = 56;
   const startOffset = totalDays - 1;
-  hm.innerHTML = '';
+  const colW = 320 / 8, rowH = 210 / 7;
+
+  let glowHTML = `<defs><filter id="glowblur" x="-100%" y="-100%" width="300%" height="300%">
+    <feGaussianBlur stdDeviation="10"></feGaussianBlur>
+  </filter></defs>`;
+
   for (let w = 0; w < 8; w++) {
-    const col = document.createElement('div');
-    col.className = 'heatmap-col';
     for (let d = 0; d < 7; d++) {
       const offset = startOffset - (w * 7 + d);
       const dateObj = addDays(today, -offset);
+      if (dateObj > today) continue;
       const key = toKey(dateObj);
       const act = data[key];
-      const dot = document.createElement('div');
-      dot.className = 'hdot';
-      if (dateObj <= today && COLORS[act]) dot.style.background = COLORS[act];
-      col.appendChild(dot);
+      const color = COLORS[act];
+      if (!color) continue;
+      const cx = colW * w + colW / 2;
+      const cy = rowH * d + rowH / 2;
+      glowHTML += `<circle cx="${cx}" cy="${cy}" r="16" fill="${color}" opacity="0.55" filter="url(#glowblur)"></circle>`;
     }
-    hm.appendChild(col);
   }
+  // sharp core dots on top so individual days stay readable
+  for (let w = 0; w < 8; w++) {
+    for (let d = 0; d < 7; d++) {
+      const offset = startOffset - (w * 7 + d);
+      const dateObj = addDays(today, -offset);
+      if (dateObj > today) continue;
+      const key = toKey(dateObj);
+      const act = data[key];
+      const color = COLORS[act];
+      if (!color) continue;
+      const cx = colW * w + colW / 2;
+      const cy = rowH * d + rowH / 2;
+      glowHTML += `<circle cx="${cx}" cy="${cy}" r="5" fill="${color}"></circle>`;
+    }
+  }
+  hm.innerHTML = glowHTML;
 
   // ── Recovery ratio ──
   const activeDays = Object.keys(data).filter(k => data[k] === 'active');
