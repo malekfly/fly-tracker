@@ -225,6 +225,9 @@ body {
 .month-rank-icon { font-size: 20px; margin-bottom: 4px; }
 .month-rank-pct { font-size: 24px; font-weight: 800; color: var(--text); }
 .month-rank-name { font-size: 12px; color: #777; margin-top: 2px; font-weight: 600; }
+.month-rank-breakdown { margin-top: 8px; display: flex; flex-direction: column; gap: 3px; }
+.mrb-line { display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: #666; justify-content: center; }
+.mrb-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
 .hdot { width: 100%; aspect-ratio: 1; border-radius: 3px; background: #E5E5EA; }
 .ring-wrap { position: relative; width: 140px; height: 140px; margin: 6px auto 0; }
 .consistency-ring { width: 100%; height: 100%; transform: rotate(0deg); }
@@ -608,10 +611,12 @@ body {
     <div class="month-rank-card best">
       <div class="month-rank-pct" id="ins-best-month-pct">—</div>
       <div class="month-rank-name" id="ins-best-month-name">—</div>
+      <div class="month-rank-breakdown" id="ins-best-month-breakdown"></div>
     </div>
     <div class="month-rank-card worst">
       <div class="month-rank-pct" id="ins-worst-month-pct">—</div>
       <div class="month-rank-name" id="ins-worst-month-name">—</div>
+      <div class="month-rank-breakdown" id="ins-worst-month-breakdown"></div>
     </div>
   </div>
 
@@ -1261,13 +1266,14 @@ function renderInsights() {
   // ── Best & Worst Month (2026; injured counts as a miss, not excluded) ──
   const today = new Date();
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const monthStats = []; // { month, pct, trained, elapsed }
+  const monthStats = []; // { month, pct, elapsed, counts:{active,recovery,both,injured} }
 
   for (let m = 0; m < 12; m++) {
     const monthStart = new Date(2026, m, 1);
     if (monthStart > today) break; // future months not started yet
     const daysInMonth = new Date(2026, m + 1, 0).getDate();
     let trained = 0, elapsed = 0;
+    const counts = { active: 0, recovery: 0, both: 0, injured: 0 };
     for (let d = 1; d <= daysInMonth; d++) {
       const dateObj = new Date(2026, m, d);
       if (dateObj > today) break;
@@ -1275,10 +1281,25 @@ function renderInsights() {
       const act = data[key];
       elapsed++; // injured days count toward elapsed — they're a miss, not excluded
       if (act === 'active' || act === 'recovery' || act === 'both') trained++;
+      if (counts[act] !== undefined) counts[act]++;
     }
     if (elapsed > 0) {
-      monthStats.push({ month: monthNames[m], pct: Math.round((trained / elapsed) * 100) });
+      monthStats.push({ month: monthNames[m], pct: Math.round((trained / elapsed) * 100), counts });
     }
+  }
+
+  function renderBreakdown(el, counts) {
+    const rows = [
+      ['Active',   'active',   'var(--active)'],
+      ['A. Rec',   'recovery', 'var(--recovery)'],
+      ['Both',     'both',     'var(--both)'],
+      ['Injured',  'injured',  'var(--injured)'],
+    ];
+    el.innerHTML = rows
+      .filter(([, key]) => counts[key] > 0)
+      .map(([label, key, color]) =>
+        `<div class="mrb-line"><div class="mrb-dot" style="background:${color}"></div>${label}: ${counts[key]}</div>`
+      ).join('');
   }
 
   if (monthStats.length) {
@@ -1288,6 +1309,8 @@ function renderInsights() {
     document.getElementById('ins-best-month-name').textContent = best.month;
     document.getElementById('ins-worst-month-pct').textContent  = worst.pct + '%';
     document.getElementById('ins-worst-month-name').textContent = worst.month;
+    renderBreakdown(document.getElementById('ins-best-month-breakdown'), best.counts);
+    renderBreakdown(document.getElementById('ins-worst-month-breakdown'), worst.counts);
   }
 
   // ── Recovery ratio ──
