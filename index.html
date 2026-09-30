@@ -591,7 +591,7 @@ body {
 <div class="card narrow">
   <div class="card-label">Insights</div>
 
-  <div class="insight-sub">This Month</div>
+  <div class="insight-sub" id="ins-month-heading">This Month</div>
   <div class="month-combo-row">
     <div class="score-hero" id="score-hero">
       <div class="score-num" id="ins-score">—</div>
@@ -1341,17 +1341,18 @@ function renderInsights() {
   document.getElementById('ins-injury-gap').textContent = avgGap;
 
   // ── This Month's Consistency ring (segmented: Active / A.Rec / Both; injured counts as a miss) ──
-  const nowM = today.getMonth();
-  const daysInThisMonth = new Date(2026, nowM + 1, 0).getDate();
+  const nowM = viewMonth;
+  const daysInThisMonth = new Date(viewYear, nowM + 1, 0).getDate();
   const mCounts = { active: 0, recovery: 0, both: 0 };
   let mTrained = 0, mElapsed = 0;
   for (let d = 1; d <= daysInThisMonth; d++) {
-    const dateObj = new Date(2026, nowM, d);
+    const dateObj = new Date(viewYear, nowM, d);
     if (dateObj > today) break;
-    const act = data[fmt(2026, nowM + 1, d)];
+    const act = data[fmt(viewYear, nowM + 1, d)];
     mElapsed++;
     if (mCounts[act] !== undefined) { mCounts[act]++; mTrained++; }
   }
+  document.getElementById('ins-month-heading').textContent = MONTHS[nowM] + ' ' + viewYear;
   const ringPct = mElapsed ? Math.round((mTrained / mElapsed) * 100) : 0;
   const circumference = 2 * Math.PI * 50;
   const segOrder = [
