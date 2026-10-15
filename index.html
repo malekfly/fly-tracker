@@ -221,10 +221,12 @@ body {
 .month-rank-row { display: flex; gap: 10px; }
 .month-rank-card { flex: 1; border-radius: 16px; padding: 16px 12px; text-align: center; background: #FFFFFF; }
 .month-rank-card.best  { border: 2.5px solid #000CFF; color: #000CFF; }
-.month-rank-card.worst { border: 2.5px solid #8C1C3A; color: #8C1C3A; }
+.month-rank-card.worst { border: 2.5px solid #E00000; color: #E00000; }
 .month-rank-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-.mrb-bar { height: 6px; border-radius: 3px; background: #E5E5EA; margin-top: 8px; overflow: hidden; display: flex; }
-.mrb-bar span { height: 100%; }
+.mrb-row { display: flex; align-items: center; gap: 6px; }
+.mrb-track { flex: 1; height: 8px; border-radius: 4px; background: #E5E5EA; overflow: hidden; }
+.mrb-fill { height: 100%; border-radius: 4px; }
+.mrb-pct { font-size: 11px; font-weight: 700; color: var(--text); min-width: 28px; text-align: right; }
 .month-rank-icon { font-size: 20px; margin-bottom: 4px; }
 .month-rank-pct { font-size: 24px; font-weight: 800; color: inherit; }
 .month-rank-name { font-size: 12px; color: inherit; margin-top: 2px; font-weight: 600; }
@@ -1065,9 +1067,10 @@ function renderYearGrid() {
     const isFuture = ds > todayDs;
     const act     = inYear && !isFuture ? (data[ds] || null) : null;
 
-    if (inYear && !isFuture && act !== 'injured') {
+    // Every elapsed day counts; injured / empty days are misses, Both counts once
+    if (inYear && !isFuture) {
       totalDays++;
-      if (act) totalLogged += (act === 'both' ? 2 : 1);
+      if (act === 'active' || act === 'recovery' || act === 'both') totalLogged++;
     }
 
     let cls;
@@ -1300,12 +1303,12 @@ function renderInsights() {
       ['A. Rec', 'recovery', 'var(--recovery)'],
       ['Both',   'both',     'var(--both)'],
     ];
-    const present = rows.filter(([, key]) => counts[key] > 0);
-    const bar = `<div class="mrb-bar">${present.map(([, key, color]) =>
-      `<span style="width:${(counts[key] / elapsed) * 100}%;background:${color}"></span>`).join('')}</div>`;
-    el.innerHTML = bar + present.map(([label, key, color]) => {
+    // One bar per activity type, percentage next to it (colour = type, same as the legend)
+    el.innerHTML = rows
+      .filter(([, key]) => counts[key] > 0)
+      .map(([label, key, color]) => {
         const pct = Math.round((counts[key] / elapsed) * 100);
-        return `<div class="mrb-line"><div class="mrb-dot" style="background:${color}"></div><span class="mrb-label">${label}</span><span class="mrb-val">${pct}%</span></div>`;
+        return `<div class="mrb-row" title="${label}"><div class="mrb-track"><div class="mrb-fill" style="width:${pct}%;background:${color}"></div></div><span class="mrb-pct">${pct}%</span></div>`;
       }).join('');
   }
 
