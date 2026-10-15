@@ -1391,10 +1391,10 @@ function renderInsights() {
   document.getElementById('ins-month-ring-pct').textContent = ringPct + '%';
 
   // ── Fitness Score (selected month only) ──
-  // Points per day: Gym (Active) 1.0 · Both 1.2 · Active Recovery 0.6 · Injured / nothing 0.
+  // Points per day: Active 1.0 · Both 1.35 · Active Recovery 0.5 · Injured / nothing 0.
   // 100 = the equivalent of gym 6 days a week (one rest day per week built in).
   // Extra "Both" days can make up for lighter days; the score is capped at 100.
-  const DAY_POINTS = { active: 1.0, both: 1.2, recovery: 0.6 };
+  const DAY_POINTS = { active: 1.0, both: 1.35, recovery: 0.5 };
   let mPoints = 0;
   for (let d = 1; d <= daysInThisMonth; d++) {
     const dateObj = new Date(viewYear, nowM, d);
