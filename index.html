@@ -985,6 +985,7 @@ function changeMonth(dir) {
   viewMonth += dir;
   renderMonthCalendar();
   renderStats();
+  renderInsights(); // This Month ring/score, Recovery Ratio and Injury Gap follow the selected month
 }
 
 // ─────────────────────────────────────────────
@@ -1313,27 +1314,34 @@ function renderInsights() {
     renderBreakdown(document.getElementById('ins-worst-month-breakdown'), worst.counts, worst.elapsed);
   }
 
-  // ── Recovery ratio ──
-  const activeDays = Object.keys(data).filter(k => data[k] === 'active');
+  // Selected month (follows calendar navigation)
+  const selPrefix = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-`;
+  const inSelMonth = k => k.startsWith(selPrefix);
+
+  // ── Recovery ratio (selected month) ──
+  // Active days in the month whose next day was Active Recovery or Both.
+  // An active day whose next day hasn't happened yet is not counted.
+  const activeDays = Object.keys(data).filter(k => inSelMonth(k) && data[k] === 'active')
+    .filter(k => addDays(dateFromStr(k), 1) <= today);
   let followedByRecovery = 0;
   activeDays.forEach(k => {
-    const next = toKey(addDays(dateFromStr(k), 1));
-    const nextAct = data[next];
+    const nextAct = data[toKey(addDays(dateFromStr(k), 1))];
     if (nextAct === 'recovery' || nextAct === 'both') followedByRecovery++;
   });
-  const ratio = activeDays.length ? Math.round((followedByRecovery / activeDays.length) * 100) : 0;
-  document.getElementById('ins-recovery-ratio').textContent = activeDays.length ? ratio + '%' : '—';
+  document.getElementById('ins-recovery-ratio').textContent =
+    activeDays.length ? Math.round((followedByRecovery / activeDays.length) * 100) + '%' : '—';
 
-  // ── Avg days between injuries ──
-  const injuryDates = Object.keys(data).filter(k => data[k] === 'injured').sort();
+  // ── Avg days between injuries (selected month) ──
+  // Consecutive injured days are one injury; gap = days between the starts of injuries.
+  const injuryDays = Object.keys(data).filter(k => inSelMonth(k) && data[k] === 'injured').sort();
+  const injuryStarts = injuryDays.filter(k => data[toKey(addDays(dateFromStr(k), -1))] !== 'injured');
   let avgGap = '—';
-  if (injuryDates.length >= 2) {
-    let gaps = [];
-    for (let i = 1; i < injuryDates.length; i++) {
-      const diff = (dateFromStr(injuryDates[i]) - dateFromStr(injuryDates[i-1])) / 86400000;
-      gaps.push(diff);
+  if (injuryStarts.length >= 2) {
+    const gaps = [];
+    for (let i = 1; i < injuryStarts.length; i++) {
+      gaps.push(Math.round((dateFromStr(injuryStarts[i]) - dateFromStr(injuryStarts[i-1])) / 86400000));
     }
-    avgGap = Math.round(gaps.reduce((a,b)=>a+b,0) / gaps.length);
+    avgGap = Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length);
   }
   document.getElementById('ins-injury-gap').textContent = avgGap;
 
