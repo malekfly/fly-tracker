@@ -1392,7 +1392,7 @@ function renderInsights() {
 
   // ── Fitness Score (selected month only) ──
   // Points per day: Active 1.0 · Both 1.35 · Active Recovery 0.5 · Injured / nothing 0.
-  // 100 = the equivalent of gym 6 days a week (one rest day per week built in).
+  // 100 = the equivalent of gym 5 days a week (3-4/week ≈ 60-80, 4-5/week ≈ 80-100).
   // Extra "Both" days can make up for lighter days; the score is capped at 100.
   const DAY_POINTS = { active: 1.0, both: 1.35, recovery: 0.5 };
   let mPoints = 0;
@@ -1401,7 +1401,7 @@ function renderInsights() {
     if (dateObj > today) break;
     mPoints += DAY_POINTS[data[fmt(viewYear, nowM + 1, d)]] || 0;
   }
-  const target = mElapsed * 6 / 7;
+  const target = mElapsed * 5 / 7;
   const score = target ? Math.min(100, Math.round((mPoints / target) * 100)) : 0;
 
   // Sub-line reads the month's context (injury first, then score)
