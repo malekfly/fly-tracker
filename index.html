@@ -237,10 +237,10 @@ body {
 .ring-pct { font-size: 26px; font-weight: 800; color: var(--text); }
 .ring-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.03em; }
 
-.score-hero { border-radius: 18px; padding: 14px 10px; text-align: center; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #F5C518; }
-.score-num  { font-size: 32px; font-weight: 800; line-height: 1; color: #000000; }
-.score-label { font-size: 12px; color: #000000; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 4px; }
-.score-sub { font-size: 12px; color: #000000; margin-top: 6px; }
+.score-hero { border-radius: 18px; padding: 14px 10px; text-align: center; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #FFFFFF; border: 2.5px solid #000CFF; }
+.score-num  { font-size: 32px; font-weight: 800; line-height: 1; color: #000CFF; }
+.score-label { font-size: 12px; color: #000CFF; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 4px; }
+.score-sub { font-size: 12px; color: #000CFF; margin-top: 6px; }
 .month-combo-row { display: flex; align-items: center; gap: 12px; }
 
 /* ── STATS BUBBLE ── */
@@ -1395,19 +1395,27 @@ function renderInsights() {
   const target = mElapsed * 6 / 7;
   const score = target ? Math.min(100, Math.round((mPoints / target) * 100)) : 0;
 
+  // Sub-line reads the month's context (injury first, then score)
+  let mInjured = 0;
+  for (let d = 1; d <= daysInThisMonth; d++) {
+    if (new Date(viewYear, nowM, d) > today) break;
+    if (data[fmt(viewYear, nowM + 1, d)] === 'injured') mInjured++;
+  }
+  const isCurrentMonth = viewYear === today.getFullYear() && nowM === today.getMonth();
+  const injuredToday = isCurrentMonth && data[toKey(today)] === 'injured';
+  let sub;
+  if (!mElapsed)                                   sub = 'Not started yet';
+  else if (injuredToday)                           sub = 'Injured — heal first, then rebuild';
+  else if (mInjured >= mElapsed / 2)               sub = 'Injury month — recovery came first';
+  else if (mInjured > 0 && score < 40)             sub = 'Back from injury — ease into it';
+  else if (score < 40)                             sub = isCurrentMonth ? 'Slow start — time to get going' : 'Quiet month — bounce back next';
+  else if (score < 70)                             sub = 'Solid — keep the momentum going';
+  else if (score < 90)                             sub = 'Strong month — keep it up';
+  else                                             sub = 'Elite consistency';
+
   const scoreSubEl = document.getElementById('ins-score-sub');
   document.getElementById('ins-score').textContent = mElapsed ? score : '—';
-  if (!mElapsed) {
-    scoreSubEl.textContent = 'Not started yet';
-  } else if (score < 40) {
-    scoreSubEl.textContent = 'Room to build back up';
-  } else if (score < 70) {
-    scoreSubEl.textContent = 'Steady — keep the momentum going';
-  } else if (score < 90) {
-    scoreSubEl.textContent = 'Strong month';
-  } else {
-    scoreSubEl.textContent = 'Elite consistency';
-  }
+  scoreSubEl.textContent = sub;
 }
 
 // ─────────────────────────────────────────────
